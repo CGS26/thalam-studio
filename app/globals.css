@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -84,12 +85,18 @@ nav button.nav-active::after { content: ""; height: 2px; background: var(--red);
 .timeline-head h2 { font: 20px Georgia, serif; margin: 0 0 4px; }
 .timeline-head span { font-size: 9px; color: var(--red); }
 .timeline-head button { border: 1px solid var(--line); background: var(--card); border-radius: 3px; padding: 8px 11px; font-size: 10px; cursor: pointer; }
+.timeline-actions { display: flex; align-items: center; gap: 8px; }
+.timeline-actions button.primary { border-color: var(--ink); background: var(--ink); color: white; }
+.timeline-actions button.primary:hover { background: #262626; }
 .beat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
 .anga-sequence { display: grid; gap: 14px; }
 .anga-group { border: 1px solid var(--line); border-radius: 7px; padding: 10px; background: #faf8f4; }
 .anga-label { display: flex; align-items: center; justify-content: space-between; margin: -2px 1px 9px; color: var(--muted); font-size: 7px; letter-spacing: .12em; }
 .anga-label span { color: var(--red); font-weight: 800; }
 .anga-label strong { font-size: 7px; }
+.anga-label > div { display: flex; align-items: center; gap: 10px; }
+.anga-label button { border: 1px solid var(--line); border-radius: 7px; background: white; padding: 5px 8px; color: var(--ink); font-size: 8px; font-weight: 600; letter-spacing: 0; cursor: pointer; }
+.anga-label button:hover { border-color: #d4d4d4; background: #f5f5f5; }
 .shortcut-hint { margin: -12px 0 24px; color: var(--muted); font-size: 8px; text-align: right; }
 .shortcut-hint kbd { min-width: 18px; display: inline-block; margin: 0 2px; padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; background: white; color: var(--ink); font: 8px Arial, sans-serif; text-align: center; }
 .beat-card { min-width: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--card); padding: 10px; cursor: pointer; position: relative; transition: .2s ease; }
@@ -315,7 +322,8 @@ nav button { align-self: stretch; padding: 0 14px; }
 nav button.nav-active::after { left: 12px; right: 12px; height: 3px; border-radius: 3px 3px 0 0; }
 .save-button { border-radius: 7px; padding: 10px 15px; box-shadow: none; font-size: 12px; }
 .file-actions > button { border-color: var(--line); color: var(--ink); }
-.file-actions > .save-button { color: white; }
+.file-actions > .save-button { border-color: var(--ink); background: var(--ink); color: white; }
+.file-actions > .save-button:hover { border-color: #262626; background: #262626; }
 
 .hero {
   min-height: auto;
@@ -502,6 +510,7 @@ footer { min-height: 50px; }
   .workspace-tabs button small { display: none; }
   .workspace-tabs button > span { width: 22px; height: 22px; }
   .timeline-head { align-items: center; }
+  .timeline-actions { align-items: stretch; flex-direction: column; }
   .sub-duration { display: none; }
   .nadai-row { grid-template-columns: 1fr 1fr; }
   .subdivision-foot { gap: 8px; }
@@ -513,3 +522,113 @@ footer { min-height: 50px; }
   .wave-toolbar label { display: none; }
   .effect-toggles { display: grid; grid-template-columns: 1fr; }
 }
+
+/* Premium monochrome theme */
+:root {
+  --ink: #171717;
+  --muted: #737373;
+  --paper: #f5f5f5;
+  --card: #ffffff;
+  --line: #e5e5e5;
+  --red: #171717;
+  --red-dark: #0a0a0a;
+  --gold: #525252;
+}
+
+html, body { background: var(--paper); }
+body, button, input, select { font-family: "Poppins", Arial, sans-serif; }
+button, label, input, select { transition: background-color .2s, border-color .2s, color .2s, transform .2s, box-shadow .2s; }
+button:active { transform: scale(.98); }
+button:focus-visible, input:focus-visible, select:focus-visible, label:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.topbar { border-color: var(--line); }
+.brand-mark { background: var(--ink); }
+.brand strong, .hero h1, .tala-title-row > div:first-child input, .timeline-head h2,
+.subdivision-head h3, .editor h3, .control-title > span strong, .info-head h2,
+.guide-steps h3, .learn-grid h3, .preset strong, .section-heading, .empty-editor strong {
+  font-family: "Poppins", Arial, sans-serif;
+}
+.brand strong, .hero h1, .tala-title-row > div:first-child input { font-weight: 600; }
+nav button.nav-active::after { background: var(--ink); }
+.save-button, .audio-start button, .back-compose { background: var(--ink); }
+.save-button:hover, .audio-start button:hover, .back-compose:hover { background: #262626; }
+
+.hero { background: #fff; }
+.hero p { color: var(--muted); }
+.sidebar, .composer, .preset, .subdivision-editor, .editor, .guide-steps article, .learn-grid > article {
+  border-color: var(--line);
+  background: #fff;
+}
+.sidebar, .composer { border-radius: 16px; box-shadow: 0 1px 2px #0000000a; }
+.preset, .new-tala, .beat-switcher, .subdivision-editor, .editor, .audio-start { border-radius: 12px !important; }
+.preset:hover, .beat-card:hover { border-color: #d4d4d4 !important; background: #fafafa; }
+.preset b { color: var(--ink); }
+.new-tala { border-color: #d4d4d4; }
+.new-tala span { color: var(--ink); }
+
+.transport, footer, .math-example { background: var(--ink); }
+.transport-buttons .play { background: #fff; color: var(--ink); }
+.transport-buttons .play:hover { background: #e5e5e5; }
+.click-toggle.on { border-color: #ffffff55; background: #ffffff12; }
+.click-toggle.on > span, .click-toggle.on small { color: #fff; }
+.progress-track { background: #404040; }
+.progress-fill { background: #fff; }
+
+.workspace-tabs { background: #f5f5f5; border: 1px solid var(--line); border-radius: 12px; }
+.workspace-tabs button { border-radius: 9px; }
+.workspace-tabs button.active { box-shadow: 0 1px 2px #0000000d; }
+.workspace-tabs button.active > span, .beat-switcher button.active, .section-number, .editor-index,
+.subbeat-grid button.accent > span, .guide-steps article > b { background: var(--ink); color: #fff; }
+
+.beat-card, .subbeat-slot, .subbeat-grid button, .nadai-row button, .mode-options button,
+.effect-toggles button, .pitch-presets button, .editor-actions button {
+  border-color: var(--line);
+  background: #fff;
+  border-radius: 10px;
+}
+.beat-card.selected, .nadai-row button.active, .subbeat-slot.accent,
+.subbeat-grid button.accent, .mode-options button.active, .pitch-presets button.active,
+.effect-toggles button.active, .sound-segments button.active {
+  border-color: var(--ink);
+  background: #fafafa;
+  color: var(--ink);
+}
+.beat-card.active, .subbeat-grid button.playing, .subbeat-slot.playing {
+  background: #f5f5f5;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.mini-wave i, .waveform > i { background: var(--ink); }
+.warning { background: #fafafa; border-color: #d4d4d4; color: #525252; }
+
+.subdivision-head, .simple-controls, .beat-switcher { background: #fafafa; }
+.sub-duration, .editor-actions .preview-button, .edit-controls .match-slot {
+  border-color: var(--ink);
+  background: #fff;
+  color: var(--ink);
+}
+.sound-picker, .sound-picker select, .sound-segments button, .sub-sound-panel { background: #fff; }
+.sound-segments button b, .custom-sound-action, .custom-sub-upload, .subdivision-foot button,
+.advanced-toggle span, .edit-controls output, .mode-options button > b { color: var(--ink); }
+.custom-sound-action { border-color: var(--ink); }
+.subbeat-grid .sound-chip.active { background: var(--ink); }
+
+.waveform {
+  background: repeating-linear-gradient(90deg, transparent 0 50px, #e5e5e580 51px), #fafafa;
+}
+.waveform .slot-shade { background: #17171708; border-color: var(--ink); }
+.trim-selection { background: #1717170d; border-color: #737373; }
+.trim-handle { background: var(--ink); }
+.trim-handle b { background: var(--ink); color: #fff; }
+.slot-line { border-color: #737373; }
+.slot-line b { color: #525252; }
+.true-waveform { border-color: var(--line); border-radius: 8px; }
+
+.info-overlay { background: #000000a8; }
+.info-panel { background: var(--paper); }
+.info-head span, .math-example > span { color: #525252; }
+.math-example code { color: #fff; background: #ffffff12; }
+.learn-grid > article > span { color: #525252; }
+.file-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }

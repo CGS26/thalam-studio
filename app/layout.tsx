@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#231d19" />
+        <meta name="theme-color" content="#171717" />
         <link rel="manifest" href={`${basePath}/manifest.webmanifest`} />
         <link rel="apple-touch-icon" href={`${basePath}/apple-touch-icon.png`} />
       </head>

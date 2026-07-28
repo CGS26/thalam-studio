@@ -28,10 +28,10 @@ export function WaveformEditor({ buffer, trimStart, trimEnd, slotDuration, zoom,
       canvas.style.height = `${height}px`;
       const context = canvas.getContext("2d")!;
       context.scale(ratio, ratio);
-      context.fillStyle = "#faf6f0";
+      context.fillStyle = "#fafafa";
       context.fillRect(0, 0, width, height);
 
-      context.strokeStyle = "#e5ddd2";
+      context.strokeStyle = "#e5e5e5";
       context.lineWidth = 1;
       for (let x = 0; x < width; x += 50) {
         context.beginPath();
@@ -42,12 +42,12 @@ export function WaveformEditor({ buffer, trimStart, trimEnd, slotDuration, zoom,
 
       const startX = (trimStart / buffer.duration) * width;
       const endX = (trimEnd / buffer.duration) * width;
-      context.fillStyle = "#d5a64c20";
+      context.fillStyle = "#1717170d";
       context.fillRect(startX, 0, endX - startX, height);
 
       const channel = buffer.getChannelData(0);
       const samplesPerPixel = Math.max(1, Math.floor(channel.length / width));
-      context.strokeStyle = "#b84a32";
+      context.strokeStyle = "#262626";
       context.lineWidth = 1;
       context.beginPath();
       for (let x = 0; x < width; x += 1) {
@@ -67,14 +67,14 @@ export function WaveformEditor({ buffer, trimStart, trimEnd, slotDuration, zoom,
       const slotX = (slotDuration / buffer.duration) * width;
       if (slotX < width) {
         context.setLineDash([5, 4]);
-        context.strokeStyle = "#813220";
+        context.strokeStyle = "#737373";
         context.beginPath();
         context.moveTo(slotX, 0);
         context.lineTo(slotX, height);
         context.stroke();
         context.setLineDash([]);
-        context.fillStyle = "#813220";
-        context.font = "700 9px Arial";
+        context.fillStyle = "#525252";
+        context.font = "600 9px Poppins, sans-serif";
         context.fillText("AKSHARA END", slotX + 5, 14);
       }
 
@@ -82,11 +82,11 @@ export function WaveformEditor({ buffer, trimStart, trimEnd, slotDuration, zoom,
         { x: startX, label: "IN" },
         { x: endX, label: "OUT" },
       ].forEach(({ x, label }) => {
-        context.fillStyle = "#d5a64c";
+        context.fillStyle = "#171717";
         context.fillRect(x - 2, 0, 4, height);
         context.fillRect(label === "IN" ? x : x - 27, 0, 27, 18);
-        context.fillStyle = "#231d19";
-        context.font = "700 9px Arial";
+        context.fillStyle = "#ffffff";
+        context.font = "600 9px Poppins, sans-serif";
         context.fillText(label, label === "IN" ? x + 6 : x - 23, 12);
       });
     };
@@ -127,7 +127,7 @@ export function WaveformEditor({ buffer, trimStart, trimEnd, slotDuration, zoom,
     <canvas
       ref={canvasRef}
       className="true-waveform"
-      aria-label="Interactive audio waveform. Drag the gold IN and OUT handles to select audio."
+      aria-label="Interactive audio waveform. Drag the IN and OUT handles to select audio."
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={() => { dragMode.current = null; }}

@@ -564,6 +564,32 @@ export default function Home() {
     });
   }
 
+  function addAkshara(newAnga = false) {
+    const nextIndex = beats.length;
+    const nextId = Math.max(...beats.map((beat) => beat.id)) + 1;
+    setBeats((items) => [...items, { ...makeBeat(nextIndex), id: nextId }]);
+    setAngas((groups) => newAnga
+      ? [...groups, 1]
+      : [...groups.slice(0, -1), (groups.at(-1) ?? 0) + 1]);
+    setSelected(nextIndex);
+    setFocusedSubBeat(null);
+    setSaveState(newAnga ? `Added aṅga ${angas.length + 1}` : `Added akshara ${nextIndex + 1}`);
+  }
+
+  function addAksharaToAnga(groupIndex: number) {
+    const insertIndex = angas.slice(0, groupIndex + 1).reduce((total, size) => total + size, 0);
+    const nextId = Math.max(...beats.map((beat) => beat.id)) + 1;
+    setBeats((items) => [
+      ...items.slice(0, insertIndex),
+      { ...makeBeat(insertIndex), id: nextId },
+      ...items.slice(insertIndex),
+    ]);
+    setAngas((groups) => groups.map((size, index) => index === groupIndex ? size + 1 : size));
+    setSelected(insertIndex);
+    setFocusedSubBeat(null);
+    setSaveState(`Added akshara to aṅga ${groupIndex + 1}`);
+  }
+
   function applyPreset(preset: (typeof talaPresets)[number]) {
     setTalaName(preset.name);
     setBeats(Array.from({ length: preset.beats }, (_, i) => beats[i] ?? makeBeat(i)));
@@ -897,16 +923,22 @@ export default function Home() {
           {workspaceView === "beats" && <>
           <div className="timeline-head">
             <div><h2>Akshara sequence</h2><span>Angas {angas.join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all clips fit"}</span></div>
-            <button onClick={() => {
-              setBeats((items) => [...items, { ...makeBeat(items.length), id: Math.max(...items.map((beat) => beat.id)) + 1 }]);
-              setAngas((groups) => [...groups.slice(0, -1), (groups.at(-1) ?? 0) + 1]);
-            }}>＋ Add akshara</button>
+            <div className="timeline-actions">
+              <button onClick={() => addAkshara()}>＋ Add akshara</button>
+              <button className="primary" onClick={() => addAkshara(true)}>＋ Add aṅga</button>
+            </div>
           </div>
 
           <div className="anga-sequence">
-            {groupedBeats.map((group) => (
+            {groupedBeats.map((group, groupIndex) => (
               <section className="anga-group" key={`${group.start}-${group.beats.length}`}>
-                <div className="anga-label"><span>AṄGA {group.number}</span><strong>{group.beats.length} AKSHARAS</strong></div>
+                <div className="anga-label">
+                  <span>AṄGA {group.number}</span>
+                  <div>
+                    <strong>{group.beats.length} AKSHARAS</strong>
+                    <button onClick={() => addAksharaToAnga(groupIndex)}>＋ Akshara</button>
+                  </div>
+                </div>
                 <div className="beat-grid">
                   {group.beats.map((beat, offset) => {
                     const index = group.start + offset;
