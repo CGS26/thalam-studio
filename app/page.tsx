@@ -8,6 +8,14 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 type OverflowMode = "overflow" | "mute" | "trim";
 type SubBeatState = "accent" | "on" | "mute";
 type SubBeatSound = "tik" | "beep" | "boop" | "custom";
+type Jati = 3 | 4 | 5 | 7 | 9;
+type Kriya = "clap" | "wave" | "little-finger" | "ring-finger" | "middle-finger" | "index-finger" | "thumb" | "pulse";
+type TalaSection =
+  | { type: "laghu"; jati: Jati }
+  | { type: "drutam" }
+  | { type: "anudrutam" }
+  | { type: "chapu-group"; aksharas: number }
+  | { type: "custom"; aksharas: number };
 
 type Beat = {
   id: number;
@@ -39,13 +47,92 @@ type Beat = {
   subSounds: SubBeatSound[];
   subAudioUrls: Array<string | undefined>;
   subAudioNames: Array<string | undefined>;
+  kriyaOverride?: Kriya;
 };
 
 const talaPresets = [
-  { name: "Ādi Tāḷa", angas: [4, 2, 2], beats: 8 },
-  { name: "Rūpaka Tāḷa", angas: [2, 4], beats: 6 },
-  { name: "Miśra Cāpu", angas: [3, 4], beats: 7 },
+  {
+    name: "Ādi Tāḷa",
+    sections: [{ type: "laghu", jati: 4 }, { type: "drutam" }, { type: "drutam" }] satisfies TalaSection[],
+  },
+  {
+    name: "Rūpaka Tāḷa",
+    sections: [{ type: "drutam" }, { type: "laghu", jati: 4 }] satisfies TalaSection[],
+  },
+  {
+    name: "Miśra Cāpu",
+    sections: [
+      { type: "chapu-group", aksharas: 3 },
+      { type: "chapu-group", aksharas: 2 },
+      { type: "chapu-group", aksharas: 2 },
+    ] satisfies TalaSection[],
+  },
 ];
+
+const laghuKriyas: Kriya[] = [
+  "clap",
+  "little-finger",
+  "ring-finger",
+  "middle-finger",
+  "index-finger",
+  "thumb",
+  "little-finger",
+  "ring-finger",
+  "middle-finger",
+];
+
+const kriyaLabels: Record<Kriya, string> = {
+  clap: "Clap",
+  wave: "Wave",
+  "little-finger": "Little finger",
+  "ring-finger": "Ring finger",
+  "middle-finger": "Middle finger",
+  "index-finger": "Index finger",
+  thumb: "Thumb",
+  pulse: "Pulse",
+};
+
+function sectionLength(section: TalaSection) {
+  if (section.type === "laghu") return section.jati;
+  if (section.type === "drutam") return 2;
+  if (section.type === "anudrutam") return 1;
+  return section.aksharas;
+}
+
+function sectionName(section: TalaSection) {
+  if (section.type === "laghu") return `${section.jati === 3 ? "Tisra" : section.jati === 4 ? "Chatusra" : section.jati === 5 ? "Khanda" : section.jati === 7 ? "Misra" : "Sankirna"} laghu`;
+  if (section.type === "drutam") return "Drutam";
+  if (section.type === "anudrutam") return "Anudrutam";
+  if (section.type === "chapu-group") return "Cāpu pulse group";
+  return "Custom group";
+}
+
+function derivedKriya(section: TalaSection, position: number): Kriya {
+  if (section.type === "laghu") return laghuKriyas[position] ?? "pulse";
+  if (section.type === "drutam") return position === 0 ? "clap" : "wave";
+  if (section.type === "anudrutam") return "clap";
+  return "pulse";
+}
+
+function totalAksharas(sections: TalaSection[]) {
+  return sections.reduce((sum, section) => sum + sectionLength(section), 0);
+}
+
+function parseTalaSection(value: unknown): TalaSection | null {
+  if (!value || typeof value !== "object") return null;
+  const section = value as Record<string, unknown>;
+  if (section.type === "drutam") return { type: "drutam" };
+  if (section.type === "anudrutam") return { type: "anudrutam" };
+  const jati = Number(section.jati);
+  if (section.type === "laghu" && [3, 4, 5, 7, 9].includes(jati)) {
+    return { type: "laghu", jati: jati as Jati };
+  }
+  const aksharas = Number(section.aksharas);
+  if ((section.type === "chapu-group" || section.type === "custom") && Number.isInteger(aksharas) && aksharas > 0) {
+    return { type: section.type, aksharas };
+  }
+  return null;
+}
 
 const syllables = ["TA", "KA", "DHI", "MI", "TA", "KA", "JO", "NU"];
 const namedNadais: Record<number, { name: string; phrase: string }> = {
@@ -61,7 +148,7 @@ const subdivisions = Array.from({ length: 16 }, (_, index) => {
   const named = namedNadais[count];
   return named ?? {
     name: count === 1 ? "Single" : count === 2 ? "Double" : "Custom",
-    phrase: `${count} ${count === 1 ? "mātra" : "mātras"}`,
+    phrase: `${count} ${count === 1 ? "subdivision" : "subdivisions"}`,
   };
 }).map((subdivision, index) => ({ count: index + 1, ...subdivision }));
 
@@ -150,7 +237,7 @@ export default function Home() {
   const [beats, setBeats] = useState<Beat[]>(() => Array.from({ length: 8 }, (_, i) => makeBeat(i)));
   const [activeBeat, setActiveBeat] = useState(0);
   const [activeSubBeat, setActiveSubBeat] = useState(0);
-  const [elapsed, setElapsed] = useState(61);
+  const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState(0);
   const [talaName, setTalaName] = useState("My morning korvai");
@@ -162,7 +249,11 @@ export default function Home() {
   const [focusedSubBeat, setFocusedSubBeat] = useState<number | null>(null);
   const [workspaceView, setWorkspaceView] = useState<"beats" | "subbeats" | "audio">("beats");
   const [subBeatClickEnabled, setSubBeatClickEnabled] = useState(true);
-  const [angas, setAngas] = useState<number[]>([4, 2, 2]);
+  const [sections, setSections] = useState<TalaSection[]>([
+    { type: "laghu", jati: 4 },
+    { type: "drutam" },
+    { type: "drutam" },
+  ]);
   const [importError, setImportError] = useState("");
   const [renderingAudio, setRenderingAudio] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
@@ -178,16 +269,20 @@ export default function Home() {
   const cycle = Math.floor(elapsed / cycleDuration) + 1;
   const current = beats[selected] ?? beats[0];
   const groupedBeats = useMemo(() => {
-    const groups: Array<{ number: number; start: number; beats: Beat[] }> = [];
+    const groups: Array<{ number: number; start: number; section: TalaSection; beats: Beat[] }> = [];
     let start = 0;
-    for (const size of angas) {
+    for (const section of sections) {
       if (start >= beats.length) break;
-      groups.push({ number: groups.length + 1, start, beats: beats.slice(start, start + size) });
+      const size = sectionLength(section);
+      groups.push({ number: groups.length + 1, start, section, beats: beats.slice(start, start + size) });
       start += size;
     }
-    if (start < beats.length) groups.push({ number: groups.length + 1, start, beats: beats.slice(start) });
+    if (start < beats.length) {
+      const section: TalaSection = { type: "custom", aksharas: beats.length - start };
+      groups.push({ number: groups.length + 1, start, section, beats: beats.slice(start) });
+    }
     return groups;
-  }, [angas, beats]);
+  }, [sections, beats]);
 
   const overflowCount = useMemo(
     () => beats.filter((beat) => (beat.duration ?? 0) > beatDuration).length,
@@ -563,18 +658,19 @@ export default function Home() {
     });
     setActiveBeat(0);
     setElapsed(0);
-    setAngas((groups) => {
+    setSections((groups) => {
       let cursor = 0;
       const next = [...groups];
-      const groupIndex = next.findIndex((size) => {
-        cursor += size;
+      const groupIndex = next.findIndex((section) => {
+        cursor += sectionLength(section);
         return index < cursor;
       });
       if (groupIndex >= 0) {
-        next[groupIndex] -= 1;
-        if (next[groupIndex] === 0) next.splice(groupIndex, 1);
+        const nextLength = sectionLength(next[groupIndex]) - 1;
+        if (nextLength === 0) next.splice(groupIndex, 1);
+        else next[groupIndex] = { type: "custom", aksharas: nextLength };
       }
-      return next.length ? next : [1];
+      return next.length ? next : [{ type: "custom", aksharas: 1 }];
     });
   }
 
@@ -582,32 +678,73 @@ export default function Home() {
     const nextIndex = beats.length;
     const nextId = Math.max(...beats.map((beat) => beat.id)) + 1;
     setBeats((items) => [...items, { ...makeBeat(nextIndex), id: nextId }]);
-    setAngas((groups) => newAnga
-      ? [...groups, 1]
-      : [...groups.slice(0, -1), (groups.at(-1) ?? 0) + 1]);
+    setSections((groups) => {
+      if (newAnga) return [...groups, { type: "custom", aksharas: 1 }];
+      const last = groups.at(-1);
+      if (!last) return [{ type: "custom", aksharas: 1 }];
+      return [...groups.slice(0, -1), { type: "custom", aksharas: sectionLength(last) + 1 }];
+    });
     setSelected(nextIndex);
     setFocusedSubBeat(null);
-    setSaveState(newAnga ? `Added aṅga ${angas.length + 1}` : `Added akshara ${nextIndex + 1}`);
+    setSaveState(newAnga ? `Added custom group ${sections.length + 1}` : `Added akshara ${nextIndex + 1}`);
   }
 
   function addAksharaToAnga(groupIndex: number) {
-    const insertIndex = angas.slice(0, groupIndex + 1).reduce((total, size) => total + size, 0);
+    const insertIndex = sections.slice(0, groupIndex + 1).reduce((total, section) => total + sectionLength(section), 0);
     const nextId = Math.max(...beats.map((beat) => beat.id)) + 1;
     setBeats((items) => [
       ...items.slice(0, insertIndex),
       { ...makeBeat(insertIndex), id: nextId },
       ...items.slice(insertIndex),
     ]);
-    setAngas((groups) => groups.map((size, index) => index === groupIndex ? size + 1 : size));
+    setSections((groups) => groups.map((section, index) =>
+      index === groupIndex ? { type: "custom", aksharas: sectionLength(section) + 1 } : section,
+    ));
     setSelected(insertIndex);
     setFocusedSubBeat(null);
-    setSaveState(`Added akshara to aṅga ${groupIndex + 1}`);
+    setSaveState(`Added akshara to group ${groupIndex + 1}`);
+  }
+
+  function changeSectionType(groupIndex: number, value: string) {
+    const currentSection = sections[groupIndex];
+    if (!currentSection) return;
+    const nextSection: TalaSection =
+      value === "drutam" ? { type: "drutam" }
+      : value === "anudrutam" ? { type: "anudrutam" }
+      : value.startsWith("laghu-") ? { type: "laghu", jati: Number(value.slice(6)) as Jati }
+      : { type: "custom", aksharas: sectionLength(currentSection) };
+    const oldLength = sectionLength(currentSection);
+    const nextLength = sectionLength(nextSection);
+    const start = sections.slice(0, groupIndex).reduce((sum, section) => sum + sectionLength(section), 0);
+
+    if (nextLength < oldLength) {
+      beats.slice(start + nextLength, start + oldLength).forEach((beat) => {
+        if (beat.audioUrl) URL.revokeObjectURL(beat.audioUrl);
+        beat.subAudioUrls.forEach((url) => url && URL.revokeObjectURL(url));
+      });
+    }
+    setBeats((items) => {
+      if (nextLength === oldLength) return items;
+      if (nextLength < oldLength) return [...items.slice(0, start + nextLength), ...items.slice(start + oldLength)];
+      const nextId = Math.max(...items.map((beat) => beat.id)) + 1;
+      const added = Array.from({ length: nextLength - oldLength }, (_, index) => ({
+        ...makeBeat(start + oldLength + index),
+        id: nextId + index,
+      }));
+      return [...items.slice(0, start + oldLength), ...added, ...items.slice(start + oldLength)];
+    });
+    setSections((items) => items.map((section, index) => index === groupIndex ? nextSection : section));
+    setSelected(start);
+    setActiveBeat(0);
+    setElapsed(0);
+    setSaveState(`Changed group ${groupIndex + 1} to ${sectionName(nextSection)}`);
   }
 
   function applyPreset(preset: (typeof talaPresets)[number]) {
+    const beatCount = totalAksharas(preset.sections);
     setTalaName(preset.name);
-    setBeats(Array.from({ length: preset.beats }, (_, i) => beats[i] ?? makeBeat(i)));
-    setAngas([...preset.angas]);
+    setBeats(Array.from({ length: beatCount }, (_, i) => ({ ...(beats[i] ?? makeBeat(i)), kriyaOverride: undefined })));
+    setSections(preset.sections.map((section) => ({ ...section })));
     setSelected(0);
     setActiveBeat(0);
     setElapsed(0);
@@ -616,11 +753,12 @@ export default function Home() {
   function exportTala() {
     const arrangement = {
       format: "thalam-arrangement",
-      version: 2,
+      version: 3,
       name: talaName,
       bpm,
       beatCount: beats.length,
-      angas,
+      sections,
+      angas: sections.map(sectionLength),
       beats: beats.map(({ audioUrl: _audioUrl, audioBuffer: _audioBuffer, subAudioUrls: _subAudioUrls, ...beat }) => beat),
     };
     const blob = new Blob([JSON.stringify(arrangement, null, 2)], { type: "application/json" });
@@ -680,21 +818,34 @@ export default function Home() {
       const importedBpm = typeof arrangement.bpm === "number" && Number.isFinite(arrangement.bpm)
         ? Math.max(20, Math.min(300, arrangement.bpm))
         : 60;
-      const importedAngas = Array.isArray(arrangement.angas)
+      const importedSections = Array.isArray(arrangement.sections)
+        ? arrangement.sections.map(parseTalaSection).filter((section): section is TalaSection => section !== null)
+        : [];
+      const legacyAngas = Array.isArray(arrangement.angas)
         ? arrangement.angas.filter((size): size is number => Number.isInteger(size) && size > 0)
         : [];
-      const validAngas = importedAngas.reduce((sum, size) => sum + size, 0) === importedBeats.length
-        ? importedAngas
-        : [importedBeats.length];
+      const importedName = typeof arrangement.name === "string" ? arrangement.name : "";
+      const migratedLegacySections: TalaSection[] =
+        /ādi|adi/i.test(importedName) && legacyAngas.join(",") === "4,2,2"
+          ? [{ type: "laghu", jati: 4 }, { type: "drutam" }, { type: "drutam" }]
+          : /rūpaka|rupaka/i.test(importedName) && legacyAngas.join(",") === "2,4"
+            ? [{ type: "drutam" }, { type: "laghu", jati: 4 }]
+            : /cāpu|chapu/i.test(importedName)
+              ? legacyAngas.map((aksharas) => ({ type: "chapu-group", aksharas }))
+              : legacyAngas.map((aksharas) => ({ type: "custom", aksharas }));
+      const candidateSections = importedSections.length ? importedSections : migratedLegacySections;
+      const validSections = totalAksharas(candidateSections) === importedBeats.length
+        ? candidateSections
+        : [{ type: "custom", aksharas: importedBeats.length }] satisfies TalaSection[];
       beats.forEach((beat) => {
         if (beat.audioUrl) URL.revokeObjectURL(beat.audioUrl);
         beat.subAudioUrls.forEach((url) => url && URL.revokeObjectURL(url));
       });
       setPlaying(false);
-      setTalaName(typeof arrangement.name === "string" ? arrangement.name : file.name.replace(/\.json$/i, ""));
+      setTalaName(importedName || file.name.replace(/\.json$/i, ""));
       setBpm(importedBpm);
       setBeats(importedBeats);
-      setAngas(validAngas);
+      setSections(validSections);
       setSelected(0);
       setActiveBeat(0);
       setActiveSubBeat(0);
@@ -865,11 +1016,11 @@ export default function Home() {
           <div className="section-heading"><span>Quick start</span><small>PRESETS</small></div>
           {talaPresets.map((preset) => (
             <button className="preset" key={preset.name} onClick={() => applyPreset(preset)}>
-              <span><strong>{preset.name}</strong><small>{preset.angas.join(" + ")}</small></span>
-              <b>{preset.beats}</b>
+              <span><strong>{preset.name}</strong><small>{preset.sections.map(sectionLength).join(" + ")}</small></span>
+              <b>{totalAksharas(preset.sections)}</b>
             </button>
           ))}
-          <button className="new-tala" onClick={() => { setTalaName("Untitled tāḷa"); setBeats(Array.from({ length: 4 }, (_, i) => makeBeat(i))); setAngas([4]); setSelected(0); }}>
+          <button className="new-tala" onClick={() => { setTalaName("Untitled tāḷa"); setBeats(Array.from({ length: 4 }, (_, i) => makeBeat(i))); setSections([{ type: "custom", aksharas: 4 }]); setSelected(0); }}>
             <span>＋</span> New tāḷa
           </button>
           <div className="notation-note">
@@ -906,7 +1057,7 @@ export default function Home() {
               <div className="progress-track"><span style={{ width: `${((elapsed % cycleDuration) / cycleDuration) * 100}%` }} /></div>
               <small>{((elapsed % cycleDuration) / cycleDuration * 100).toFixed(0)}% of cycle</small>
             </div>
-            <div className="position"><span>AKSHARA · MĀTRA</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>sub-beat {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
+            <div className="position"><span>AKSHARA · SUBDIVISION</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>subdivision {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
           </div>
 
           <div className="workspace-tabs" role="tablist" aria-label="Composer steps">
@@ -936,10 +1087,10 @@ export default function Home() {
 
           {workspaceView === "beats" && <>
           <div className="timeline-head">
-            <div><h2>Akshara sequence</h2><span>Angas {angas.join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all clips fit"}</span></div>
+            <div><h2>Akshara sequence</h2><span>Structure {sections.map(sectionLength).join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all clips fit"}</span></div>
             <div className="timeline-actions">
               <button onClick={() => addAkshara()}>＋ Add akshara</button>
-              <button className="primary" onClick={() => addAkshara(true)}>＋ Add aṅga</button>
+              <button className="primary" onClick={() => addAkshara(true)}>＋ Add group</button>
             </div>
           </div>
 
@@ -947,9 +1098,25 @@ export default function Home() {
             {groupedBeats.map((group, groupIndex) => (
               <section className="anga-group" key={`${group.start}-${group.beats.length}`}>
                 <div className="anga-label">
-                  <span>AṄGA {group.number}</span>
+                  <span>{group.section.type === "chapu-group" ? "PULSE GROUP" : group.section.type === "custom" ? "CUSTOM GROUP" : "AṄGA"} {group.number}</span>
                   <div>
-                    <strong>{group.beats.length} AKSHARAS</strong>
+                    <strong>{sectionName(group.section)} · {group.beats.length} AKSHARAS</strong>
+                    {group.section.type !== "chapu-group" && (
+                      <select
+                        aria-label={`Structure for group ${group.number}`}
+                        value={group.section.type === "laghu" ? `laghu-${group.section.jati}` : group.section.type}
+                        onChange={(event) => changeSectionType(groupIndex, event.target.value)}
+                      >
+                        <option value="anudrutam">Anudrutam · 1</option>
+                        <option value="drutam">Drutam · 2</option>
+                        <option value="laghu-3">Tisra laghu · 3</option>
+                        <option value="laghu-4">Chatusra laghu · 4</option>
+                        <option value="laghu-5">Khanda laghu · 5</option>
+                        <option value="laghu-7">Misra laghu · 7</option>
+                        <option value="laghu-9">Sankirna laghu · 9</option>
+                        <option value="custom">Custom group</option>
+                      </select>
+                    )}
                     <button onClick={() => addAksharaToAnga(groupIndex)}>＋ Akshara</button>
                   </div>
                 </div>
@@ -957,6 +1124,7 @@ export default function Home() {
                   {group.beats.map((beat, offset) => {
                     const index = group.start + offset;
                     const tooLong = (beat.duration ?? 0) > beatDuration;
+                    const kriya = beat.kriyaOverride ?? derivedKriya(group.section, offset);
                     return (
                       <article
                         key={beat.id}
@@ -965,7 +1133,7 @@ export default function Home() {
                       >
                         <div className="beat-top">
                           <span>{index + 1}</span>
-                          <small>{beat.syllable}</small>
+                          <small>{kriyaLabels[kriya]}</small>
                           <button
                             className="delete-beat"
                             disabled={beats.length <= 1}
@@ -977,6 +1145,24 @@ export default function Home() {
                             }}
                           >×</button>
                         </div>
+                        <label className="kriya-select">
+                          <span>Kriya</span>
+                          <select
+                            value={beat.kriyaOverride ?? ""}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={(event) => {
+                              event.stopPropagation();
+                              const value = event.target.value as Kriya | "";
+                              setSelected(index);
+                              setBeats((items) => items.map((item, beatIndex) =>
+                                beatIndex === index ? { ...item, kriyaOverride: value || undefined } : item,
+                              ));
+                            }}
+                          >
+                            <option value="">Automatic · {kriyaLabels[derivedKriya(group.section, offset)]}</option>
+                            {Object.entries(kriyaLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                        </label>
                         <div className={`mini-wave ${beat.fileName ? "has-audio" : ""}`}>
                           {beat.peaks.slice(0, 20).map((peak, i) => <i key={i} style={{ height: `${peak * 100}%` }} />)}
                         </div>
@@ -1004,9 +1190,9 @@ export default function Home() {
             <div className="subdivision-head">
               <div>
                 <span className="section-number">A</span>
-                <div><h3>Sub-beats inside Akshara {selected + 1}</h3><p>Choose 1–16 mātras. Traditional nadai names appear where applicable.</p></div>
+                <div><h3>Subdivisions inside Akshara {selected + 1}</h3><p>Choose 1–16 equal subdivisions. The five traditional nadais are named below.</p></div>
               </div>
-              <span className="sub-duration">{(beatDuration / current.subdivision).toFixed(3)}s per mātra</span>
+              <span className="sub-duration">{(beatDuration / current.subdivision).toFixed(3)}s per subdivision</span>
             </div>
             <div className="nadai-row">
               {subdivisions.map((subdivision) => (
@@ -1021,7 +1207,7 @@ export default function Home() {
                   key={index}
                   className={`subbeat-slot ${state} ${playing && activeBeat === selected && activeSubBeat === index ? "playing" : ""}`}
                 >
-                  <button className="subbeat-state" onClick={() => cycleSubBeat(index)} aria-label={`Mātra ${index + 1}, ${state}`}>
+                  <button className="subbeat-state" onClick={() => cycleSubBeat(index)} aria-label={`Subdivision ${index + 1}, ${state}`}>
                     <span>{index + 1}</span>
                     <b>{state === "accent" ? "ACCENT" : state === "mute" ? "MUTE" : "NORMAL"}</b>
                     <small>{(index * beatDuration / current.subdivision).toFixed(3)}s</small>
@@ -1035,7 +1221,7 @@ export default function Home() {
             {focusedSubBeat !== null && (
               <div className="sub-sound-panel">
                 <div>
-                  <strong>Mātra {focusedSubBeat + 1} sound</strong>
+                  <strong>Subdivision {focusedSubBeat + 1} sound</strong>
                   <small>Choose a generated sine tone or upload your own sound.</small>
                 </div>
                 <div className="sound-segments">
@@ -1057,7 +1243,7 @@ export default function Home() {
             )}
             <div className="subdivision-foot">
               <span><i className="legend accent" /> Accent <i className="legend on" /> Normal <i className="legend mute" /> Muted</span>
-              <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision} mātras to all aksharas</button>
+              <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision} subdivisions to all aksharas</button>
             </div>
           </section>}
 
@@ -1228,9 +1414,9 @@ export default function Home() {
                 <article><span>01</span><h3>Tāḷa</h3><p>A repeating rhythmic framework. One complete repetition is a cycle.</p></article>
                 <article><span>02</span><h3>Akshara</h3><p>One timed pulse in the cycle. The interface also calls it a beat for clarity.</p></article>
                 <article><span>03</span><h3>BPM</h3><p>Beats per minute. At 60 BPM, every akshara lasts exactly 1 second.</p></article>
-                <article><span>04</span><h3>Anga</h3><p>A structural division of a tāḷa, such as the 4 + 2 + 2 grouping in Ādi Tāḷa.</p></article>
-                <article><span>05</span><h3>Mātra</h3><p>A smaller timed subdivision inside an akshara. Mātra duration is akshara duration divided by the chosen subdivision count.</p></article>
-                <article><span>06</span><h3>Gati / Nadai</h3><p>Choose 1–16 mātras per akshara. Traditional options include Tisra 3, Chatusra 4, Khanda 5, Misra 7, and Sankirna 9.</p></article>
+                <article><span>04</span><h3>Aṅga</h3><p>A Suladi tāḷa component: anudrutam has 1 akshara, drutam has 2, and laghu has 3, 4, 5, 7, or 9 according to its jāti.</p></article>
+                <article><span>05</span><h3>Kriya</h3><p>The hand action marking an akshara: clap, wave, or a finger count. Aṅga type determines the traditional kriya sequence.</p></article>
+                <article><span>06</span><h3>Gati / Nadai</h3><p>Nadai divides each akshara. Traditional options are Tisra 3, Chatusra 4, Khanda 5, Misra 7, and Sankirna 9; other counts are shown as custom subdivisions.</p></article>
                 <div className="math-example">
                   <span>WORKED EXAMPLE</span>
                   <h3>8 aksharas · 60 BPM · time 1:01</h3>

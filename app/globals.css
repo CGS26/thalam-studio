@@ -95,6 +95,7 @@ nav button.nav-active::after { content: ""; height: 2px; background: var(--red);
 .anga-label span { color: var(--red); font-weight: 800; }
 .anga-label strong { font-size: 7px; }
 .anga-label > div { display: flex; align-items: center; gap: 10px; }
+.anga-label select { max-width: 145px; border: 1px solid var(--line); border-radius: 7px; background: white; padding: 5px 7px; color: var(--ink); font-size: 8px; letter-spacing: 0; }
 .anga-label button { border: 1px solid var(--line); border-radius: 7px; background: white; padding: 5px 8px; color: var(--ink); font-size: 8px; font-weight: 600; letter-spacing: 0; cursor: pointer; }
 .anga-label button:hover { border-color: #d4d4d4; background: #f5f5f5; }
 .shortcut-hint { margin: -12px 0 24px; color: var(--muted); font-size: 8px; text-align: right; }
@@ -117,6 +118,8 @@ nav button.nav-active::after { content: ""; height: 2px; background: var(--red);
 .card-subbeats i.accent { height: 6px; background: var(--red); }
 .card-subbeats i.mute { background: #ded8d1; opacity: .35; }
 .card-subbeats i.playing { box-shadow: 0 0 0 2px var(--gold); }
+.kriya-select { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 5px; margin: 0 0 7px; color: var(--muted); font-size: 7px; cursor: default; }
+.kriya-select select { min-width: 0; width: 100%; border: 1px solid var(--line); border-radius: 4px; background: white; padding: 4px; color: var(--ink); font-size: 7px; }
 .upload { display: grid; gap: 2px; text-align: center; border-top: 1px solid #eee6dc; padding-top: 8px; overflow: hidden; cursor: pointer; }
 .upload input { display: none; }
 .upload strong { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
