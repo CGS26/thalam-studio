@@ -1,106 +1,126 @@
 # Tāla Lab
 
-An open-source, database-free Carnatic tāḷa and sub-beat composer built with
-Next.js, Web Audio, and Tone.js.
+Tāla Lab is a database-free Carnatic tāḷa and sub-beat composer, built with
+Next.js, Web Audio, Tone.js, and Tailwind CSS.
 
-Create custom rhythmic cycles, choose gati/nadai subdivisions for each
-akshara, design mātra accents and sounds, upload audio, edit real waveforms,
-shift pitch and tempo, and export arrangements locally.
+The production app is hosted on Vercel and can be installed as a Progressive
+Web App (PWA) on phones and desktop computers.
 
-## Prerequisites
+## Features
+
+- Create custom tāḷa cycles and aṅga groupings
+- Add and remove aksharas within individual aṅgas
+- Choose gati/nadai subdivisions for every akshara
+- Design mātra accents and click sounds
+- Import local WAV, MP3, M4A, Opus, Ogg, and compatible WebM audio
+- Trim waveforms and adjust gain, tempo, pitch, pan, fades, EQ, and compression
+- Preview complete cycles in the browser
+- Export rendered audio as WAV
+- Export and import arrangements as JSON
+- Install the app and reopen previously visited content offline
+
+Audio files and compositions are processed locally in the browser. The app
+does not require a database or user account.
+
+## Install the PWA
+
+The deployed Vercel site must be opened once while online before offline access
+is available.
+
+### Android
+
+1. Open the production site in Chrome.
+2. Tap the three-dot menu.
+3. Select **Install app** or **Add to Home screen**.
+4. Confirm the installation.
+
+### iPhone or iPad
+
+1. Open the production site in Safari.
+2. Tap the **Share** button.
+3. Select **Add to Home Screen**.
+4. Tap **Add**.
+
+### Desktop
+
+Open the production site in Chrome or Edge and select the install icon in the
+address bar.
+
+## Local Development
+
+### Prerequisites
 
 - Node.js `>=22.13.0`
 
-## Quick Start
+### Setup
 
 ```bash
 npm install
 npm run dev
+```
+
+Open `http://localhost:3000`.
+
+The service worker is registered only in production to prevent stale assets
+from interfering with development.
+
+## Validation
+
+```bash
+npm run lint
+npx tsc --noEmit
 npm run build
 ```
 
-## Deploy to GitHub Pages
+## Deploy to Vercel
 
-The included workflow at `.github/workflows/deploy-pages.yml` builds and
-publishes the app whenever `main` is pushed.
+1. Import the GitHub repository into Vercel.
+2. Use the detected **Next.js** framework preset.
+3. Keep the standard install and build commands.
+4. Deploy the project.
 
-1. Push this project to a GitHub repository, preferably named `tala-lab`.
-2. Open **Settings → Pages** in the repository.
-3. Set **Source** to **GitHub Actions**.
-4. Push to `main` or run the workflow manually from the **Actions** tab.
+The project uses a static Next.js export, configured in `next.config.ts`.
 
-The workflow automatically uses the actual repository name as the Pages base
-path, so forks and renamed repositories continue to work.
+For a normal Vercel domain such as `https://project-name.vercel.app/`, do not
+define `NEXT_PUBLIC_BASE_PATH`. It should remain empty.
 
-## Included Shape
+Only set it when the app is intentionally served from a URL subpath:
 
-- edit site code under `app/`
-- `native/thalam_engine.cpp` contains the C++ timing-engine foundation
-- tāḷas can be exported as JSON without a server or credentials
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```text
+NEXT_PUBLIC_BASE_PATH=/thalam
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+Do not include a domain, quotes, or a trailing slash. Redeploy after changing
+the environment variable.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## PWA Structure
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+- `public/manifest.webmanifest` contains the app name, colors, icons, and
+  standalone display settings.
+- `public/sw.js` caches the app shell and previously visited same-origin assets.
+- `app/ServiceWorkerRegistration.tsx` registers the service worker in
+  production.
+- `public/icon-192.png`, `public/icon-512.png`, and
+  `public/apple-touch-icon.png` provide install icons.
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+PWA installation requires HTTPS. Vercel provides HTTPS automatically.
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## Project Structure
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+- `app/page.tsx` — composer interface and browser audio engine
+- `app/WaveformEditor.tsx` — interactive waveform editor
+- `app/globals.css` — responsive premium monochrome design system
+- `app/layout.tsx` — metadata and PWA integration
+- `native/thalam_engine.cpp` — native timing-engine foundation
+- `public/` — icons, manifest, service worker, and static assets
 
 ## Useful Commands
 
-- `npm run dev`: start local development
-- `npm run build`: create a production Next.js build
+- `npm run dev` — start local development
+- `npm run lint` — run ESLint
+- `npm run build` — create the production static export
 
 ## Learn More
 
-- [Next.js Documentation](https://nextjs.org/docs)
+- [Next.js documentation](https://nextjs.org/docs)
+- [Vercel documentation](https://vercel.com/docs)
