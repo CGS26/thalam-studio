@@ -5,6 +5,7 @@ import { WaveformEditor } from "./WaveformEditor";
 
 type OverflowMode = "overflow" | "mute" | "trim";
 type SubBeatState = "accent" | "on" | "mute";
+type SubBeatSound = "tik" | "beep" | "boop" | "custom";
 
 type Beat = {
   id: number;
@@ -33,6 +34,9 @@ type Beat = {
   compression: number;
   subdivision: number;
   subPattern: SubBeatState[];
+  subSounds: SubBeatSound[];
+  subAudioUrls: Array<string | undefined>;
+  subAudioNames: Array<string | undefined>;
 };
 
 const talaPresets = [
@@ -72,6 +76,9 @@ function makeBeat(index: number): Beat {
     compression: 0,
     subdivision: 4,
     subPattern: ["accent", "on", "on", "on"],
+    subSounds: ["tik", "tik", "tik", "tik"],
+    subAudioUrls: [undefined, undefined, undefined, undefined],
+    subAudioNames: [undefined, undefined, undefined, undefined],
   };
 }
 
@@ -126,7 +133,7 @@ export default function Home() {
       if (slotKey !== lastPlayedSlot.current) {
         lastPlayedSlot.current = slotKey;
         if (subBeat === 0) void playBeat(beat);
-        playSubBeat(beat.subPattern[subBeat], subBeat === 0);
+        playSubBeat(beat.subPattern[subBeat], subBeat === 0, beat.subSounds[subBeat], beat.subAudioUrls[subBeat]);
       }
       setElapsed(nextElapsed);
       setActiveBeat(beatIndex);
@@ -144,7 +151,10 @@ export default function Home() {
   useEffect(() => {
     return () => {
       previewStop.current?.();
-      beats.forEach((beat) => beat.audioUrl && URL.revokeObjectURL(beat.audioUrl));
+      beats.forEach((beat) => {
+        if (beat.audioUrl) URL.revokeObjectURL(beat.audioUrl);
+        beat.subAudioUrls.forEach((url) => url && URL.revokeObjectURL(url));
+      });
     };
   }, []);
 
@@ -159,20 +169,28 @@ export default function Home() {
     setPlaying(true);
   }
 
-  function playSubBeat(state: SubBeatState, downbeat: boolean) {
+  function playSubBeat(state: SubBeatState, downbeat: boolean, sound: SubBeatSound = "tik", customUrl?: string) {
     if (state === "mute") return;
+    if (sound === "custom" && customUrl) {
+      const audio = new Audio(customUrl);
+      audio.volume = state === "accent" || downbeat ? 1 : 0.65;
+      void audio.play();
+      return;
+    }
     const context = clickContext.current ?? new AudioContext();
     clickContext.current = context;
     if (context.state === "suspended") void context.resume();
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.frequency.value = state === "accent" || downbeat ? 1250 : 880;
+    const baseFrequency = sound === "beep" ? 660 : sound === "boop" ? 220 : 880;
+    oscillator.frequency.value = state === "accent" || downbeat ? baseFrequency * 1.35 : baseFrequency;
+    const duration = sound === "beep" ? 0.12 : sound === "boop" ? 0.16 : 0.045;
     const volume = state === "accent" || downbeat ? 0.11 : 0.04;
     gain.gain.setValueAtTime(volume, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
     oscillator.connect(gain).connect(context.destination);
     oscillator.start();
-    oscillator.stop(context.currentTime + 0.045);
+    oscillator.stop(context.currentTime + duration + 0.005);
   }
 
   async function playBeat(beat: Beat, preview = false) {
@@ -366,7 +384,14 @@ export default function Home() {
       Array.from({ length: count }, (_, index) => previous[index] ?? (index === 0 ? "accent" : "on"));
     setBeats((items) => items.map((beat, index) =>
       applyToAll || index === selected
-        ? { ...beat, subdivision: count, subPattern: resizePattern(beat.subPattern) }
+        ? {
+            ...beat,
+            subdivision: count,
+            subPattern: resizePattern(beat.subPattern),
+            subSounds: Array.from({ length: count }, (_, subIndex) => beat.subSounds[subIndex] ?? "tik"),
+            subAudioUrls: Array.from({ length: count }, (_, subIndex) => beat.subAudioUrls[subIndex]),
+            subAudioNames: Array.from({ length: count }, (_, subIndex) => beat.subAudioNames[subIndex]),
+          }
         : beat,
     ));
     setActiveSubBeat(0);
@@ -376,13 +401,33 @@ export default function Home() {
     const order: SubBeatState[] = ["on", "accent", "mute"];
     const next = order[(order.indexOf(current.subPattern[index]) + 1) % order.length];
     updateBeat({ subPattern: current.subPattern.map((state, subIndex) => subIndex === index ? next : state) });
-    playSubBeat(next, index === 0);
+    playSubBeat(next, index === 0, current.subSounds[index], current.subAudioUrls[index]);
+  }
+
+  function setSubBeatSound(index: number, sound: SubBeatSound) {
+    updateBeat({ subSounds: current.subSounds.map((value, subIndex) => subIndex === index ? sound : value) });
+    playSubBeat(current.subPattern[index], index === 0, sound, current.subAudioUrls[index]);
+  }
+
+  function uploadSubBeatSound(event: ChangeEvent<HTMLInputElement>, index: number) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const previousUrl = current.subAudioUrls[index];
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
+    const url = URL.createObjectURL(file);
+    updateBeat({
+      subSounds: current.subSounds.map((sound, subIndex) => subIndex === index ? "custom" : sound),
+      subAudioUrls: current.subAudioUrls.map((value, subIndex) => subIndex === index ? url : value),
+      subAudioNames: current.subAudioNames.map((value, subIndex) => subIndex === index ? file.name : value),
+    });
+    playSubBeat(current.subPattern[index], index === 0, "custom", url);
   }
 
   function deleteBeat(index: number) {
     if (beats.length <= 1) return;
     const beat = beats[index];
     if (beat.audioUrl) URL.revokeObjectURL(beat.audioUrl);
+    beat.subAudioUrls.forEach((url) => url && URL.revokeObjectURL(url));
     setBeats((items) => items.filter((_, beatIndex) => beatIndex !== index));
     setSelected((currentIndex) => {
       if (currentIndex > index) return currentIndex - 1;
@@ -408,7 +453,7 @@ export default function Home() {
       name: talaName,
       bpm,
       beatCount: beats.length,
-      beats: beats.map(({ audioUrl: _audioUrl, audioBuffer: _audioBuffer, ...beat }) => beat),
+      beats: beats.map(({ audioUrl: _audioUrl, audioBuffer: _audioBuffer, subAudioUrls: _subAudioUrls, ...beat }) => beat),
     };
     const blob = new Blob([JSON.stringify(arrangement, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -547,16 +592,31 @@ export default function Home() {
             </div>
             <div className="subbeat-grid">
               {current.subPattern.map((state, index) => (
-                <button
+                <div
                   key={index}
-                  className={`${state} ${playing && activeBeat === selected && activeSubBeat === index ? "playing" : ""}`}
-                  onClick={() => cycleSubBeat(index)}
-                  aria-label={`Mātra ${index + 1}, ${state}`}
+                  className={`subbeat-slot ${state} ${playing && activeBeat === selected && activeSubBeat === index ? "playing" : ""}`}
                 >
-                  <span>{index + 1}</span>
-                  <b>{state === "accent" ? "ACCENT" : state === "mute" ? "MUTE" : "NORMAL"}</b>
-                  <small>{(index * beatDuration / current.subdivision).toFixed(3)}s</small>
-                </button>
+                  <button className="subbeat-state" onClick={() => cycleSubBeat(index)} aria-label={`Mātra ${index + 1}, ${state}`}>
+                    <span>{index + 1}</span>
+                    <b>{state === "accent" ? "ACCENT" : state === "mute" ? "MUTE" : "NORMAL"}</b>
+                    <small>{(index * beatDuration / current.subdivision).toFixed(3)}s</small>
+                  </button>
+                  <label className="sound-picker">
+                    <span>Sound</span>
+                    <select value={current.subSounds[index]} onChange={(event) => setSubBeatSound(index, event.target.value as SubBeatSound)}>
+                      <option value="tik">Tik</option>
+                      <option value="beep">Beep</option>
+                      <option value="boop">Boop</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  {current.subSounds[index] === "custom" && (
+                    <label className="custom-sub-upload">
+                      <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(event) => uploadSubBeatSound(event, index)} />
+                      {current.subAudioNames[index] ? current.subAudioNames[index] : "＋ Upload"}
+                    </label>
+                  )}
+                </div>
               ))}
             </div>
             <div className="subdivision-foot">
