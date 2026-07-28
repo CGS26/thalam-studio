@@ -1,0 +1,17 @@
+{
+  "name": "Thālam — Carnatic Rhythm Studio",
+  "short_name": "Thālam",
+  "description": "Compose, hear, and rehearse custom Carnatic rhythm cycles.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f2eb",
+  "theme_color": "#231d19",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
