@@ -4,6 +4,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { WaveformEditor } from "./WaveformEditor";
 
 type OverflowMode = "overflow" | "mute" | "trim";
+type SubBeatState = "accent" | "on" | "mute";
 
 type Beat = {
   id: number;
@@ -30,6 +31,8 @@ type Beat = {
   midEq: number;
   highEq: number;
   compression: number;
+  subdivision: number;
+  subPattern: SubBeatState[];
 };
 
 const talaPresets = [
@@ -39,6 +42,13 @@ const talaPresets = [
 ];
 
 const syllables = ["TA", "KA", "DHI", "MI", "TA", "KA", "JO", "NU"];
+const nadais = [
+  { count: 3, name: "Tisra", phrase: "ta-ki-ta" },
+  { count: 4, name: "Chatusra", phrase: "ta-ka-dhi-mi" },
+  { count: 5, name: "Khanda", phrase: "ta-dhi-gi-na-tom" },
+  { count: 7, name: "Misra", phrase: "ta-ki-ta-ta-ka-dhi-mi" },
+  { count: 9, name: "Sankirna", phrase: "ta-ka-dhi-mi-ta-dhi-gi-na-tom" },
+];
 
 function makeBeat(index: number): Beat {
   return {
@@ -60,6 +70,8 @@ function makeBeat(index: number): Beat {
     midEq: 0,
     highEq: 0,
     compression: 0,
+    subdivision: 4,
+    subPattern: ["accent", "on", "on", "on"],
   };
 }
 
@@ -73,6 +85,7 @@ export default function Home() {
   const [bpm, setBpm] = useState(60);
   const [beats, setBeats] = useState<Beat[]>(() => Array.from({ length: 8 }, (_, i) => makeBeat(i)));
   const [activeBeat, setActiveBeat] = useState(0);
+  const [activeSubBeat, setActiveSubBeat] = useState(0);
   const [elapsed, setElapsed] = useState(61);
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState(0);
@@ -84,7 +97,8 @@ export default function Home() {
   const [infoPanel, setInfoPanel] = useState<"guide" | "learn" | null>(null);
   const startedAt = useRef(0);
   const elapsedAtStart = useRef(0);
-  const lastPlayedSlot = useRef(-1);
+  const lastPlayedSlot = useRef("");
+  const clickContext = useRef<AudioContext | null>(null);
   const previewAudio = useRef<HTMLAudioElement | null>(null);
   const previewStop = useRef<(() => void) | null>(null);
 
@@ -104,12 +118,19 @@ export default function Home() {
     const tick = () => {
       const nextElapsed = elapsedAtStart.current + (performance.now() - startedAt.current) / 1000;
       const absoluteSlot = Math.floor(nextElapsed / beatDuration);
-      if (absoluteSlot !== lastPlayedSlot.current) {
-        lastPlayedSlot.current = absoluteSlot;
-        void playBeat(beats[absoluteSlot % beats.length]);
+      const beatIndex = absoluteSlot % beats.length;
+      const beat = beats[beatIndex];
+      const withinBeat = nextElapsed - absoluteSlot * beatDuration;
+      const subBeat = Math.min(beat.subdivision - 1, Math.floor(withinBeat / (beatDuration / beat.subdivision)));
+      const slotKey = `${absoluteSlot}:${subBeat}`;
+      if (slotKey !== lastPlayedSlot.current) {
+        lastPlayedSlot.current = slotKey;
+        if (subBeat === 0) void playBeat(beat);
+        playSubBeat(beat.subPattern[subBeat], subBeat === 0);
       }
       setElapsed(nextElapsed);
-      setActiveBeat(absoluteSlot % beats.length);
+      setActiveBeat(beatIndex);
+      setActiveSubBeat(subBeat);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -134,8 +155,24 @@ export default function Home() {
     }
     startedAt.current = performance.now();
     elapsedAtStart.current = elapsed;
-    lastPlayedSlot.current = Math.floor(elapsed / beatDuration) - 1;
+    lastPlayedSlot.current = "";
     setPlaying(true);
+  }
+
+  function playSubBeat(state: SubBeatState, downbeat: boolean) {
+    if (state === "mute") return;
+    const context = clickContext.current ?? new AudioContext();
+    clickContext.current = context;
+    if (context.state === "suspended") void context.resume();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = state === "accent" || downbeat ? 1250 : 880;
+    const volume = state === "accent" || downbeat ? 0.11 : 0.04;
+    gain.gain.setValueAtTime(volume, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.04);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.045);
   }
 
   async function playBeat(beat: Beat, preview = false) {
@@ -324,6 +361,24 @@ export default function Home() {
     }
   }
 
+  function setSubdivision(count: number, applyToAll = false) {
+    const resizePattern = (previous: SubBeatState[]) =>
+      Array.from({ length: count }, (_, index) => previous[index] ?? (index === 0 ? "accent" : "on"));
+    setBeats((items) => items.map((beat, index) =>
+      applyToAll || index === selected
+        ? { ...beat, subdivision: count, subPattern: resizePattern(beat.subPattern) }
+        : beat,
+    ));
+    setActiveSubBeat(0);
+  }
+
+  function cycleSubBeat(index: number) {
+    const order: SubBeatState[] = ["on", "accent", "mute"];
+    const next = order[(order.indexOf(current.subPattern[index]) + 1) % order.length];
+    updateBeat({ subPattern: current.subPattern.map((state, subIndex) => subIndex === index ? next : state) });
+    playSubBeat(next, index === 0);
+  }
+
   function deleteBeat(index: number) {
     if (beats.length <= 1) return;
     const beat = beats[index];
@@ -427,7 +482,7 @@ export default function Home() {
             <button className="play" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>{playing ? "Ⅱ" : "▶"}</button>
             <div className="transport-time"><span>{formatTime(elapsed)}</span><small>CYCLE {cycle}</small></div>
             <div className="progress-track"><span style={{ width: `${((elapsed % cycleDuration) / cycleDuration) * 100}%` }} /></div>
-            <div className="position"><span>AKSHARA</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>engine index {activeBeat}</small></div>
+            <div className="position"><span>AKSHARA · MĀTRA</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>sub-beat {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
           </div>
 
           <div className="timeline-head">
@@ -461,6 +516,9 @@ export default function Home() {
                   <div className={`mini-wave ${beat.fileName ? "has-audio" : ""}`}>
                     {beat.peaks.slice(0, 20).map((peak, i) => <i key={i} style={{ height: `${peak * 100}%` }} />)}
                   </div>
+                  <div className="card-subbeats" aria-label={`${beat.subdivision} sub-beats`}>
+                    {beat.subPattern.map((state, subIndex) => <i key={subIndex} className={`${state} ${playing && activeBeat === index && activeSubBeat === subIndex ? "playing" : ""}`} />)}
+                  </div>
                   <label className="upload">
                     <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(e) => uploadAudio(e, index)} />
                     {beat.fileName ? <><strong>{beat.fileName}</strong><small>{beat.decodeError ?? `${beat.duration?.toFixed(2)} sec`}</small></> : <><strong>＋ Add sound</strong><small>WAV, MP3, M4A, OPUS</small></>}
@@ -471,6 +529,41 @@ export default function Home() {
               );
             })}
           </div>
+
+          <section className="subdivision-editor">
+            <div className="subdivision-head">
+              <div>
+                <span className="section-number">A</span>
+                <div><h3>Sub-beats inside Akshara {selected + 1}</h3><p>Choose a gati/nadai, then tap each mātra to cycle: normal → accent → mute.</p></div>
+              </div>
+              <span className="sub-duration">{(beatDuration / current.subdivision).toFixed(3)}s per mātra</span>
+            </div>
+            <div className="nadai-row">
+              {nadais.map((nadai) => (
+                <button key={nadai.count} className={current.subdivision === nadai.count ? "active" : ""} onClick={() => setSubdivision(nadai.count)}>
+                  <b>{nadai.count}</b><span><strong>{nadai.name}</strong><small>{nadai.phrase}</small></span>
+                </button>
+              ))}
+            </div>
+            <div className="subbeat-grid">
+              {current.subPattern.map((state, index) => (
+                <button
+                  key={index}
+                  className={`${state} ${playing && activeBeat === selected && activeSubBeat === index ? "playing" : ""}`}
+                  onClick={() => cycleSubBeat(index)}
+                  aria-label={`Mātra ${index + 1}, ${state}`}
+                >
+                  <span>{index + 1}</span>
+                  <b>{state === "accent" ? "ACCENT" : state === "mute" ? "MUTE" : "NORMAL"}</b>
+                  <small>{(index * beatDuration / current.subdivision).toFixed(3)}s</small>
+                </button>
+              ))}
+            </div>
+            <div className="subdivision-foot">
+              <span><i className="legend accent" /> Accent <i className="legend on" /> Normal <i className="legend mute" /> Muted</span>
+              <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision}-nadai to all aksharas</button>
+            </div>
+          </section>
 
           <div className="cycle-brace"><span>1 CYCLE · {cycleDuration.toFixed(2)} SECONDS</span></div>
 
@@ -628,6 +721,8 @@ export default function Home() {
                 <article><span>02</span><h3>Akshara</h3><p>One timed pulse in the cycle. The interface also calls it a beat for clarity.</p></article>
                 <article><span>03</span><h3>BPM</h3><p>Beats per minute. At 60 BPM, every akshara lasts exactly 1 second.</p></article>
                 <article><span>04</span><h3>Anga</h3><p>A structural division of a tāḷa, such as the 4 + 2 + 2 grouping in Ādi Tāḷa.</p></article>
+                <article><span>05</span><h3>Mātra</h3><p>A smaller timed subdivision inside an akshara. Mātra duration is akshara duration divided by the chosen subdivision count.</p></article>
+                <article><span>06</span><h3>Gati / Nadai</h3><p>The subdivision pattern: Tisra 3, Chatusra 4, Khanda 5, Misra 7, or Sankirna 9 mātras per akshara.</p></article>
                 <div className="math-example">
                   <span>WORKED EXAMPLE</span>
                   <h3>8 aksharas · 60 BPM · time 1:01</h3>
