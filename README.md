@@ -1,6 +1,11 @@
-# Thālam
+# Thalam Studio
 
-A database-free Carnatic rhythm composer and PWA built with Next.js.
+An open-source, database-free Carnatic tāḷa and sub-beat composer built with
+Next.js, Web Audio, and Tone.js.
+
+Create custom rhythmic cycles, choose gati/nadai subdivisions for each
+akshara, design mātra accents and sounds, upload audio, edit real waveforms,
+shift pitch and tempo, and export arrangements locally.
 
 ## Prerequisites
 

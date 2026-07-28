@@ -1,5 +1,6 @@
 {
-  "name": "thalam-rhythm-studio",
+  "name": "thalam-studio",
+  "description": "A browser-based Carnatic tala and sub-beat composer with waveform audio editing.",
   "version": "0.1.0",
   "private": true,
   "engines": {

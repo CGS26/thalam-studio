@@ -102,6 +102,7 @@ export default function Home() {
   const [previewing, setPreviewing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [infoPanel, setInfoPanel] = useState<"guide" | "learn" | null>(null);
+  const [focusedSubBeat, setFocusedSubBeat] = useState<number | null>(null);
   const startedAt = useRef(0);
   const elapsedAtStart = useRef(0);
   const lastPlayedSlot = useRef("");
@@ -395,6 +396,7 @@ export default function Home() {
         : beat,
     ));
     setActiveSubBeat(0);
+    setFocusedSubBeat(null);
   }
 
   function cycleSubBeat(index: number) {
@@ -542,7 +544,7 @@ export default function Home() {
                 <article
                   key={beat.id}
                   className={`beat-card ${selected === index ? "selected" : ""} ${activeBeat === index && playing ? "active" : ""}`}
-                  onClick={() => setSelected(index)}
+                  onClick={() => { setSelected(index); setFocusedSubBeat(null); }}
                 >
                   <div className="beat-top">
                     <span>{index + 1}</span>
@@ -601,24 +603,35 @@ export default function Home() {
                     <b>{state === "accent" ? "ACCENT" : state === "mute" ? "MUTE" : "NORMAL"}</b>
                     <small>{(index * beatDuration / current.subdivision).toFixed(3)}s</small>
                   </button>
-                  <label className="sound-picker">
-                    <span>Sound</span>
-                    <select value={current.subSounds[index]} onChange={(event) => setSubBeatSound(index, event.target.value as SubBeatSound)}>
-                      <option value="tik">Tik</option>
-                      <option value="beep">Beep</option>
-                      <option value="boop">Boop</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </label>
-                  {current.subSounds[index] === "custom" && (
-                    <label className="custom-sub-upload">
-                      <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(event) => uploadSubBeatSound(event, index)} />
-                      {current.subAudioNames[index] ? current.subAudioNames[index] : "＋ Upload"}
-                    </label>
-                  )}
+                  <button className={`sound-chip ${focusedSubBeat === index ? "active" : ""}`} onClick={() => setFocusedSubBeat(focusedSubBeat === index ? null : index)}>
+                    ♪ {current.subSounds[index] === "custom" ? current.subAudioNames[index] ?? "Custom" : current.subSounds[index]}
+                  </button>
                 </div>
               ))}
             </div>
+            {focusedSubBeat !== null && (
+              <div className="sub-sound-panel">
+                <div>
+                  <strong>Mātra {focusedSubBeat + 1} sound</strong>
+                  <small>Choose a generated sine tone or upload your own sound.</small>
+                </div>
+                <div className="sound-segments">
+                  {(["tik", "beep", "boop", "custom"] as SubBeatSound[]).map((sound) => (
+                    <button key={sound} className={current.subSounds[focusedSubBeat] === sound ? "active" : ""} onClick={() => setSubBeatSound(focusedSubBeat, sound)}>
+                      <b>{sound === "tik" ? "•" : sound === "beep" ? "―" : sound === "boop" ? "●" : "+"}</b>
+                      <span>{sound}</span>
+                    </button>
+                  ))}
+                </div>
+                {current.subSounds[focusedSubBeat] === "custom" && (
+                  <label className="custom-sound-action">
+                    <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(event) => uploadSubBeatSound(event, focusedSubBeat)} />
+                    {current.subAudioNames[focusedSubBeat] ? `Replace ${current.subAudioNames[focusedSubBeat]}` : "Upload custom audio"}
+                  </label>
+                )}
+                <button className="close-sound-panel" onClick={() => setFocusedSubBeat(null)} aria-label="Close sub-beat sound editor">×</button>
+              </div>
+            )}
             <div className="subdivision-foot">
               <span><i className="legend accent" /> Accent <i className="legend on" /> Normal <i className="legend mute" /> Muted</span>
               <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision}-nadai to all aksharas</button>
@@ -627,7 +640,7 @@ export default function Home() {
 
           <div className="cycle-brace"><span>1 CYCLE · {cycleDuration.toFixed(2)} SECONDS</span></div>
 
-          <section className="editor">
+          {current?.audioUrl && <section className="editor">
             <div className="editor-head">
               <div><span className="editor-index">{selected + 1}</span><h3>{current?.fileName ?? `Akshara ${selected + 1}`}</h3></div>
               <div className="editor-actions">
@@ -750,7 +763,7 @@ export default function Home() {
             ) : (
               <div className="empty-editor"><strong>Drop a sound on this akshara</strong><span>Its waveform and timing choices will appear here.</span></div>
             )}
-          </section>
+          </section>}
         </div>
       </section>
 

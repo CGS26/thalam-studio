@@ -139,6 +139,20 @@ nav button.nav-active::after { content: ""; height: 2px; background: var(--red);
 .sound-picker select { min-width: 0; max-width: 68px; border: 1px solid var(--line); background: #fff; border-radius: 3px; padding: 3px; font-size: 8px; color: var(--ink); }
 .custom-sub-upload { display: block; padding: 6px 7px; border-top: 1px solid var(--line); background: #fff8f4; color: var(--red); font-size: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .custom-sub-upload input { display: none; }
+.subbeat-grid .sound-chip { width: 100%; min-height: 30px; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 7px; display: block; background: #fff; color: var(--muted); font-size: 8px; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subbeat-grid .sound-chip.active { background: var(--ink); color: white; }
+.sub-sound-panel { position: relative; margin: 0 14px 14px; padding: 14px; border: 1px solid var(--line); border-radius: 7px; background: #faf9f7; display: grid; grid-template-columns: minmax(145px, 1fr) 2fr auto; align-items: center; gap: 14px; }
+.sub-sound-panel > div:first-child strong, .sub-sound-panel > div:first-child small { display: block; }
+.sub-sound-panel > div:first-child strong { font-size: 11px; }
+.sub-sound-panel > div:first-child small { color: var(--muted); font-size: 8px; margin-top: 4px; }
+.sound-segments { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.sound-segments button { min-height: 45px; border: 1px solid var(--line); border-radius: 5px; background: white; display: grid; place-items: center; gap: 2px; cursor: pointer; text-transform: capitalize; }
+.sound-segments button b { color: var(--red); font-size: 14px; }
+.sound-segments button span { font-size: 8px; }
+.sound-segments button.active { border: 2px solid var(--red); background: #fff2ec; }
+.custom-sound-action { grid-column: 2; display: block; border: 1px dashed var(--red); border-radius: 5px; padding: 8px; text-align: center; color: var(--red); font-size: 8px; cursor: pointer; }
+.custom-sound-action input { display: none; }
+.close-sound-panel { width: 26px; height: 26px; border: 1px solid var(--line); background: white; border-radius: 50%; cursor: pointer; align-self: start; }
 .subdivision-foot { border-top: 1px solid var(--line); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 7px; }
 .subdivision-foot > span { display: flex; align-items: center; gap: 5px; }
 .legend { width: 7px; height: 7px; border-radius: 50%; background: #bbb1a6; margin-left: 5px; }
@@ -400,6 +414,9 @@ footer { min-height: 50px; }
   .sub-duration { display: none; }
   .nadai-row { grid-template-columns: 1fr 1fr; }
   .subdivision-foot { gap: 8px; }
+  .sub-sound-panel { grid-template-columns: 1fr auto; }
+  .sound-segments { grid-column: 1 / -1; }
+  .custom-sound-action { grid-column: 1 / -1; }
   .editor-actions { gap: 4px; }
   .editor-actions button { padding: 7px 8px; }
   .wave-toolbar label { display: none; }

@@ -1,6 +1,6 @@
 {
-  "name": "Thālam — Carnatic Rhythm Studio",
-  "short_name": "Thālam",
+  "name": "Thalam Studio — Carnatic Rhythm Composer",
+  "short_name": "Thalam Studio",
   "description": "Compose, hear, and rehearse custom Carnatic rhythm cycles.",
   "start_url": "/",
   "display": "standalone",
