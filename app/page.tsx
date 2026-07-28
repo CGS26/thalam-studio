@@ -48,13 +48,22 @@ const talaPresets = [
 ];
 
 const syllables = ["TA", "KA", "DHI", "MI", "TA", "KA", "JO", "NU"];
-const nadais = [
-  { count: 3, name: "Tisra", phrase: "ta-ki-ta" },
-  { count: 4, name: "Chatusra", phrase: "ta-ka-dhi-mi" },
-  { count: 5, name: "Khanda", phrase: "ta-dhi-gi-na-tom" },
-  { count: 7, name: "Misra", phrase: "ta-ki-ta-ta-ka-dhi-mi" },
-  { count: 9, name: "Sankirna", phrase: "ta-ka-dhi-mi-ta-dhi-gi-na-tom" },
-];
+const namedNadais: Record<number, { name: string; phrase: string }> = {
+  3: { name: "Tisra", phrase: "ta-ki-ta" },
+  4: { name: "Chatusra", phrase: "ta-ka-dhi-mi" },
+  5: { name: "Khanda", phrase: "ta-dhi-gi-na-tom" },
+  7: { name: "Misra", phrase: "ta-ki-ta-ta-ka-dhi-mi" },
+  9: { name: "Sankirna", phrase: "ta-ka-dhi-mi-ta-dhi-gi-na-tom" },
+};
+
+const subdivisions = Array.from({ length: 16 }, (_, index) => {
+  const count = index + 1;
+  const named = namedNadais[count];
+  return named ?? {
+    name: count === 1 ? "Single" : count === 2 ? "Double" : "Custom",
+    phrase: `${count} ${count === 1 ? "mātra" : "mātras"}`,
+  };
+}).map((subdivision, index) => ({ count: index + 1, ...subdivision }));
 
 function makeBeat(index: number): Beat {
   return {
@@ -470,17 +479,22 @@ export default function Home() {
   }
 
   function setSubdivision(count: number, applyToAll = false) {
+    const safeCount = Math.max(1, Math.min(16, Math.round(count)));
     const resizePattern = (previous: SubBeatState[]) =>
-      Array.from({ length: count }, (_, index) => previous[index] ?? (index === 0 ? "accent" : "on"));
+      Array.from({ length: safeCount }, (_, index) => previous[index] ?? (index === 0 ? "accent" : "on"));
+    beats.forEach((beat, index) => {
+      if (!applyToAll && index !== selected) return;
+      beat.subAudioUrls.slice(safeCount).forEach((url) => url && URL.revokeObjectURL(url));
+    });
     setBeats((items) => items.map((beat, index) =>
       applyToAll || index === selected
         ? {
             ...beat,
-            subdivision: count,
+            subdivision: safeCount,
             subPattern: resizePattern(beat.subPattern),
-            subSounds: Array.from({ length: count }, (_, subIndex) => beat.subSounds[subIndex] ?? "tik"),
-            subAudioUrls: Array.from({ length: count }, (_, subIndex) => beat.subAudioUrls[subIndex]),
-            subAudioNames: Array.from({ length: count }, (_, subIndex) => beat.subAudioNames[subIndex]),
+            subSounds: Array.from({ length: safeCount }, (_, subIndex) => beat.subSounds[subIndex] ?? "tik"),
+            subAudioUrls: Array.from({ length: safeCount }, (_, subIndex) => beat.subAudioUrls[subIndex]),
+            subAudioNames: Array.from({ length: safeCount }, (_, subIndex) => beat.subAudioNames[subIndex]),
           }
         : beat,
     ));
@@ -990,14 +1004,14 @@ export default function Home() {
             <div className="subdivision-head">
               <div>
                 <span className="section-number">A</span>
-                <div><h3>Sub-beats inside Akshara {selected + 1}</h3><p>Choose a gati/nadai, then tap each mātra to cycle: normal → accent → mute.</p></div>
+                <div><h3>Sub-beats inside Akshara {selected + 1}</h3><p>Choose 1–16 mātras. Traditional nadai names appear where applicable.</p></div>
               </div>
               <span className="sub-duration">{(beatDuration / current.subdivision).toFixed(3)}s per mātra</span>
             </div>
             <div className="nadai-row">
-              {nadais.map((nadai) => (
-                <button key={nadai.count} className={current.subdivision === nadai.count ? "active" : ""} onClick={() => setSubdivision(nadai.count)}>
-                  <b>{nadai.count}</b><span><strong>{nadai.name}</strong><small>{nadai.phrase}</small></span>
+              {subdivisions.map((subdivision) => (
+                <button key={subdivision.count} className={current.subdivision === subdivision.count ? "active" : ""} onClick={() => setSubdivision(subdivision.count)}>
+                  <b>{subdivision.count}</b><span><strong>{subdivision.name}</strong><small>{subdivision.phrase}</small></span>
                 </button>
               ))}
             </div>
@@ -1043,7 +1057,7 @@ export default function Home() {
             )}
             <div className="subdivision-foot">
               <span><i className="legend accent" /> Accent <i className="legend on" /> Normal <i className="legend mute" /> Muted</span>
-              <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision}-nadai to all aksharas</button>
+              <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision} mātras to all aksharas</button>
             </div>
           </section>}
 
@@ -1216,7 +1230,7 @@ export default function Home() {
                 <article><span>03</span><h3>BPM</h3><p>Beats per minute. At 60 BPM, every akshara lasts exactly 1 second.</p></article>
                 <article><span>04</span><h3>Anga</h3><p>A structural division of a tāḷa, such as the 4 + 2 + 2 grouping in Ādi Tāḷa.</p></article>
                 <article><span>05</span><h3>Mātra</h3><p>A smaller timed subdivision inside an akshara. Mātra duration is akshara duration divided by the chosen subdivision count.</p></article>
-                <article><span>06</span><h3>Gati / Nadai</h3><p>The subdivision pattern: Tisra 3, Chatusra 4, Khanda 5, Misra 7, or Sankirna 9 mātras per akshara.</p></article>
+                <article><span>06</span><h3>Gati / Nadai</h3><p>Choose 1–16 mātras per akshara. Traditional options include Tisra 3, Chatusra 4, Khanda 5, Misra 7, and Sankirna 9.</p></article>
                 <div className="math-example">
                   <span>WORKED EXAMPLE</span>
                   <h3>8 aksharas · 60 BPM · time 1:01</h3>

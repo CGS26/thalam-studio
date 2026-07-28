@@ -132,7 +132,7 @@ nav button.nav-active::after { content: ""; height: 2px; background: var(--red);
 .subdivision-head h3 { margin: 0; font: 15px Georgia, serif; }
 .subdivision-head p { margin: 4px 0 0; color: var(--muted); font-size: 8px; }
 .sub-duration { border: 1px solid #ccbca9; border-radius: 12px; padding: 5px 8px; color: var(--red); font-size: 8px; white-space: nowrap; }
-.nadai-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; padding: 14px 16px 8px; }
+.nadai-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 7px; padding: 14px 16px 8px; }
 .nadai-row button { border: 1px solid var(--line); background: white; border-radius: 4px; padding: 8px; display: flex; align-items: center; gap: 7px; text-align: left; cursor: pointer; min-width: 0; }
 .nadai-row button > b { width: 23px; height: 23px; flex: 0 0 auto; border-radius: 50%; background: #eee7de; display: grid; place-items: center; font: 11px Georgia, serif; }
 .nadai-row button span, .nadai-row button strong, .nadai-row button small { display: block; min-width: 0; }
