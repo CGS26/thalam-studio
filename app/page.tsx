@@ -104,6 +104,7 @@ export default function Home() {
   const [infoPanel, setInfoPanel] = useState<"guide" | "learn" | null>(null);
   const [focusedSubBeat, setFocusedSubBeat] = useState<number | null>(null);
   const [workspaceView, setWorkspaceView] = useState<"beats" | "subbeats" | "audio">("beats");
+  const [subBeatClickEnabled, setSubBeatClickEnabled] = useState(true);
   const startedAt = useRef(0);
   const elapsedAtStart = useRef(0);
   const lastPlayedSlot = useRef("");
@@ -135,7 +136,9 @@ export default function Home() {
       if (slotKey !== lastPlayedSlot.current) {
         lastPlayedSlot.current = slotKey;
         if (subBeat === 0) void playBeat(beat);
-        playSubBeat(beat.subPattern[subBeat], subBeat === 0, beat.subSounds[subBeat], beat.subAudioUrls[subBeat]);
+        if (subBeatClickEnabled) {
+          playSubBeat(beat.subPattern[subBeat], subBeat === 0, beat.subSounds[subBeat], beat.subAudioUrls[subBeat]);
+        }
       }
       setElapsed(nextElapsed);
       setActiveBeat(beatIndex);
@@ -144,7 +147,7 @@ export default function Home() {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, beatDuration, beats]);
+  }, [playing, beatDuration, beats, subBeatClickEnabled]);
 
   useEffect(() => {
     void import("tone");
@@ -169,6 +172,27 @@ export default function Home() {
     elapsedAtStart.current = elapsed;
     lastPlayedSlot.current = "";
     setPlaying(true);
+  }
+
+  function seekTo(nextElapsed: number) {
+    const value = Math.max(0, nextElapsed);
+    setElapsed(value);
+    setActiveBeat(Math.floor(value / beatDuration) % beats.length);
+    setActiveSubBeat(0);
+    lastPlayedSlot.current = "";
+    if (playing) {
+      startedAt.current = performance.now();
+      elapsedAtStart.current = value;
+    }
+  }
+
+  function stopPlayback() {
+    setPlaying(false);
+    const cycleStart = Math.floor(elapsed / cycleDuration) * cycleDuration;
+    setElapsed(cycleStart);
+    setActiveBeat(0);
+    setActiveSubBeat(0);
+    lastPlayedSlot.current = "";
   }
 
   function playSubBeat(state: SubBeatState, downbeat: boolean, sound: SubBeatSound = "tik", customUrl?: string) {
@@ -528,9 +552,20 @@ export default function Home() {
           </div>
 
           <div className="transport">
-            <button className="play" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>{playing ? "Ⅱ" : "▶"}</button>
+            <div className="transport-buttons">
+              <button onClick={() => seekTo(elapsed - beatDuration)} aria-label="Previous akshara" title="Previous akshara">‹</button>
+              <button className="play" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>{playing ? "Ⅱ" : "▶"}</button>
+              <button onClick={stopPlayback} aria-label="Stop and return to cycle start" title="Stop">■</button>
+              <button onClick={() => seekTo(elapsed + beatDuration)} aria-label="Next akshara" title="Next akshara">›</button>
+            </div>
             <div className="transport-time"><span>{formatTime(elapsed)}</span><small>CYCLE {cycle}</small></div>
-            <div className="progress-track"><span style={{ width: `${((elapsed % cycleDuration) / cycleDuration) * 100}%` }} /></div>
+            <button className={`click-toggle ${subBeatClickEnabled ? "on" : ""}`} onClick={() => setSubBeatClickEnabled((enabled) => !enabled)} aria-pressed={subBeatClickEnabled}>
+              <span>♪</span><b>Sub-beat click</b><small>{subBeatClickEnabled ? "On" : "Off"}</small>
+            </button>
+            <div className="progress-wrap">
+              <div className="progress-track"><span style={{ width: `${((elapsed % cycleDuration) / cycleDuration) * 100}%` }} /></div>
+              <small>{((elapsed % cycleDuration) / cycleDuration * 100).toFixed(0)}% of cycle</small>
+            </div>
             <div className="position"><span>AKSHARA · MĀTRA</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>sub-beat {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
           </div>
 
