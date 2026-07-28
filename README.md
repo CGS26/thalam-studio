@@ -6,6 +6,9 @@ Next.js, Web Audio, Tone.js, and Tailwind CSS.
 The production app is hosted on Vercel and can be installed as a Progressive
 Web App (PWA) on phones and desktop computers.
 
+[Source code](https://github.com/CGS26/thalam-studio) ·
+[Report a bug](https://github.com/CGS26/thalam-studio/issues/new/choose)
+
 ## Features
 
 - Create custom tāḷa cycles and aṅga groupings
@@ -113,6 +116,26 @@ PWA installation requires HTTPS. Vercel provides HTTPS automatically.
 - `app/layout.tsx` — metadata and PWA integration
 - `native/thalam_engine.cpp` — native timing-engine foundation
 - `public/` — icons, manifest, service worker, and static assets
+
+## Privacy
+
+Tāla Lab has no accounts or project database. Compositions and imported audio
+are processed locally in the browser and are not intentionally uploaded.
+The service worker stores app resources on the user's device for offline use.
+
+The hosted site can still produce ordinary Vercel request logs, and the current
+Google Fonts integration makes an external font request. See the in-app
+**Privacy** page for details.
+
+## Open Source
+
+Tāla Lab is available under the [MIT License](LICENSE).
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
+- Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- Report vulnerabilities according to [SECURITY.md](SECURITY.md).
+- Dependency acknowledgements are in
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Useful Commands
 

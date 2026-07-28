@@ -1233,7 +1233,10 @@ export default function Home() {
       <footer>
         <span>Tāla Lab · Carnatic rhythm studio</span>
         <button onClick={() => setInfoPanel("guide")}>Install on phone</button>
-        <span>Space: play / pause · 60 ÷ BPM = seconds per akshara</span>
+        <span className="footer-links">
+          <a href={`${basePath}/privacy/`}>Privacy</a>
+          <a href="https://github.com/CGS26/thalam-studio" target="_blank" rel="noreferrer">Source</a>
+        </span>
       </footer>
     </main>
   );
