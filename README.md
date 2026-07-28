@@ -1,5 +1,12 @@
 # Tāla Lab
 
+[![Release](https://img.shields.io/github/v/release/CGS26/thalam-studio?display_name=tag&sort=semver)](https://github.com/CGS26/thalam-studio/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-171717.svg)](LICENSE)
+[![PWA](https://img.shields.io/badge/PWA-installable-171717.svg)](#install-the-pwa)
+[![Next.js](https://img.shields.io/badge/Next.js-16-171717.svg)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-171717.svg)](https://www.typescriptlang.org/)
+[![Local processing](https://img.shields.io/badge/data-local%20processing-171717.svg)](#privacy)
+
 Tāla Lab is a database-free Carnatic tāḷa and sub-beat composer, built with
 Next.js, Web Audio, Tone.js, and Tailwind CSS.
 
@@ -8,7 +15,25 @@ Web App (PWA) on phones and desktop computers.
 
 [Source code](https://github.com/CGS26/thalam-studio) ·
 [Report a bug](https://github.com/CGS26/thalam-studio/issues/new/choose) ·
-[Latest release](https://github.com/CGS26/thalam-studio/releases/tag/v1.0.0)
+[Latest release](https://github.com/CGS26/thalam-studio/releases/tag/v1.0.0) ·
+[All tags](https://github.com/CGS26/thalam-studio/tags)
+
+## Latest Release — v1.0.0
+
+The first stable release includes:
+
+- Custom tāḷa cycles with editable aṅgas and per-aṅga aksharas
+- Per-akshara nadai, mātra accent patterns, and click sounds
+- Local audio import with waveform trimming and processing controls
+- Full-cycle browser playback with live akshara and sub-beat tracking
+- WAV rendering and portable JSON import/export
+- Installable, responsive PWA with offline caching
+- Local-first operation with no account or project database
+- Premium monochrome interface for phone, tablet, and desktop
+
+Read the complete [v1.0.0 release notes](CHANGELOG.md#100---2026-07-28),
+browse [all releases](https://github.com/CGS26/thalam-studio/releases), or view
+the [`v1.0.0` tag](https://github.com/CGS26/thalam-studio/tree/v1.0.0).
 
 ## Features
 
