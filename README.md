@@ -1,8 +1,6 @@
-# vinext-starter
+# Thālam
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+A database-free Carnatic rhythm composer and PWA built with Next.js.
 
 ## Prerequisites
 
@@ -16,16 +14,11 @@ npm run dev
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
-
 ## Included Shape
 
 - edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+- `native/thalam_engine.cpp` contains the C++ timing-engine foundation
+- tāḷas can be exported as JSON without a server or credentials
 
 ## Workspace Auth Headers
 
@@ -88,11 +81,8 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 ## Useful Commands
 
 - `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+- `npm run build`: create a production Next.js build
 
 ## Learn More
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- [Next.js Documentation](https://nextjs.org/docs)
