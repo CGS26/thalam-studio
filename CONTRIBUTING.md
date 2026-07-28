@@ -2,6 +2,11 @@
 
 Thank you for helping improve Tāla Lab.
 
+Start by reviewing [ROADMAP.md](ROADMAP.md) and the existing
+[GitHub issues](https://github.com/CGS26/thalam-studio/issues). For larger
+features, open or comment on an issue before implementation so the behavior and
+scope can be agreed upon.
+
 ## Development
 
 1. Fork and clone the repository.

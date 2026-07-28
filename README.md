@@ -16,7 +16,8 @@ Web App (PWA) on phones and desktop computers.
 [Source code](https://github.com/CGS26/thalam-studio) ·
 [Report a bug](https://github.com/CGS26/thalam-studio/issues/new/choose) ·
 [Latest release](https://github.com/CGS26/thalam-studio/releases/tag/v1.0.0) ·
-[All tags](https://github.com/CGS26/thalam-studio/tags)
+[All tags](https://github.com/CGS26/thalam-studio/tags) ·
+[Roadmap](ROADMAP.md)
 
 ## Latest Release — v1.0.0
 
@@ -158,6 +159,10 @@ Google Fonts integration makes an external font request. See the in-app
 Tāla Lab is available under the [MIT License](LICENSE).
 The current stable release is **v1.0.0**; release history is documented in
 [CHANGELOG.md](CHANGELOG.md).
+
+Future features are tracked in the community [roadmap](ROADMAP.md). Anyone can
+fork the project and contribute. Check or open a GitHub issue before starting a
+larger feature so contributors can agree on behavior and avoid duplicated work.
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 - Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
