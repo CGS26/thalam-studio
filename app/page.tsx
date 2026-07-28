@@ -3,6 +3,8 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { WaveformEditor } from "./WaveformEditor";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 type OverflowMode = "overflow" | "mute" | "trim";
 type SubBeatState = "accent" | "on" | "mute";
 type SubBeatSound = "tik" | "beep" | "boop" | "custom";
@@ -497,8 +499,10 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">தா</span>
-          <div><strong>Thālam</strong><small>rhythm studio</small></div>
+          <span className="brand-mark" aria-hidden="true">
+            <img src={`${basePath}/favicon.png`} alt="" />
+          </span>
+          <div><strong>Tāla Lab</strong><small>Carnatic rhythm studio</small></div>
         </div>
         <nav aria-label="Primary navigation">
           <button className={!infoPanel ? "nav-active" : ""} onClick={() => setInfoPanel(null)}>Composer</button>
@@ -877,7 +881,7 @@ export default function Home() {
         </div>
       )}
 
-      <footer><span>Thālam · Carnatic rhythm studio</span><span>Space: play / pause · 60 ÷ BPM = seconds per akshara</span></footer>
+      <footer><span>Tāla Lab · Carnatic rhythm studio</span><span>Space: play / pause · 60 ÷ BPM = seconds per akshara</span></footer>
     </main>
   );
 }

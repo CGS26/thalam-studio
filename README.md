@@ -1,4 +1,4 @@
-# Thalam Studio
+# Tāla Lab
 
 An open-source, database-free Carnatic tāḷa and sub-beat composer built with
 Next.js, Web Audio, and Tone.js.
@@ -24,7 +24,7 @@ npm run build
 The included workflow at `.github/workflows/deploy-pages.yml` builds and
 publishes the app whenever `main` is pushed.
 
-1. Push this project to a GitHub repository, preferably named `thalam-studio`.
+1. Push this project to a GitHub repository, preferably named `tala-lab`.
 2. Open **Settings → Pages** in the repository.
 3. Set **Source** to **GitHub Actions**.
 4. Push to `main` or run the workflow manually from the **Actions** tab.
