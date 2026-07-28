@@ -170,6 +170,14 @@ larger feature so contributors can agree on behavior and avoid duplicated work.
 - Dependency acknowledgements are in
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Acknowledgements
+
+Special thanks to [Lakshmi Ajay](https://github.com/LakshmiAjay/LakshmiAjay)
+for sharing his knowledge of Carnatic rhythm and guiding the domain concepts
+used throughout Tāla Lab. His teaching, examples, corrections, and insights
+into tāḷa, aṅga, akshara, nadai, mātra, and related musical practices were
+fundamental to shaping this project.
+
 ## Useful Commands
 
 - `npm run dev` — start local development
