@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ServiceWorkerRegistration } from "./ServiceWorkerRegistration";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const metadata: Metadata = {
+  applicationName: "Tāla Lab",
   title: "Tāla Lab — Carnatic Rhythm Composer",
   description:
     "Build custom Carnatic tāḷa cycles, place a sound on every akshara, and shape audio directly on the beat.",
@@ -23,6 +25,14 @@ export const metadata: Metadata = {
     shortcut: `${basePath}/favicon.png`,
     apple: `${basePath}/apple-touch-icon.png`,
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Tāla Lab",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -37,7 +47,10 @@ export default function RootLayout({
         <link rel="manifest" href={`${basePath}/manifest.webmanifest`} />
         <link rel="apple-touch-icon" href={`${basePath}/apple-touch-icon.png`} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }

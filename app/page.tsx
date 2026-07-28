@@ -1196,9 +1196,18 @@ export default function Home() {
                 <article><b>1</b><div><h3>Choose a cycle</h3><p>Start with Ādi, Rūpaka, or Miśra Cāpu—or create a custom tāḷa and add as many aksharas as you need.</p></div></article>
                 <article><b>2</b><div><h3>Set the tempo</h3><p>Enter BPM. The app calculates each akshara as <strong>60 ÷ BPM</strong> seconds.</p></div></article>
                 <article><b>3</b><div><h3>Add a sound</h3><p>Use “Add sound” on any akshara. WAV, MP3, M4A, Opus, Ogg, and compatible WebM audio are accepted.</p></div></article>
-                <article><b>4</b><div><h3>Edit the real waveform</h3><p>Drag the gold IN and OUT markers, then adjust tempo and pitch. Open Advanced controls for EQ, compression, fades, reverse, loop, and normalization.</p></div></article>
+                <article><b>4</b><div><h3>Edit the real waveform</h3><p>Drag the IN and OUT markers, then adjust tempo and pitch. Open Advanced controls for EQ, compression, fades, reverse, loop, and normalization.</p></div></article>
                 <article><b>5</b><div><h3>Choose the boundary</h3><p>Let a sound continue, silence that akshara, or stop it exactly when the next pulse begins.</p></div></article>
                 <article><b>6</b><div><h3>Preview and export</h3><p>Preview one selection or play the full cycle. Export saves the arrangement settings as a portable JSON file.</p></div></article>
+                <article className="install-instructions">
+                  <b>7</b>
+                  <div>
+                    <h3>Save Tāla Lab on your phone</h3>
+                    <p><strong>Android:</strong> Open the deployed site in Chrome, tap the ⋮ menu, then choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p>
+                    <p><strong>iPhone or iPad:</strong> Open the site in Safari, tap Share, scroll down, then choose <strong>Add to Home Screen</strong> and confirm with Add.</p>
+                    <small>Install from the HTTPS production site. Open it online once before relying on offline access.</small>
+                  </div>
+                </article>
               </div>
             ) : (
               <div className="learn-grid">
@@ -1221,7 +1230,11 @@ export default function Home() {
         </div>
       )}
 
-      <footer><span>Tāla Lab · Carnatic rhythm studio</span><span>Space: play / pause · 60 ÷ BPM = seconds per akshara</span></footer>
+      <footer>
+        <span>Tāla Lab · Carnatic rhythm studio</span>
+        <button onClick={() => setInfoPanel("guide")}>Install on phone</button>
+        <span>Space: play / pause · 60 ÷ BPM = seconds per akshara</span>
+      </footer>
     </main>
   );
 }
