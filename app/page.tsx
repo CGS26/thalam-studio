@@ -42,9 +42,9 @@ type Beat = {
 };
 
 const talaPresets = [
-  { name: "Ādi Tāḷa", angas: "4 + 2 + 2", beats: 8 },
-  { name: "Rūpaka Tāḷa", angas: "2 + 4", beats: 6 },
-  { name: "Miśra Cāpu", angas: "3 + 4", beats: 7 },
+  { name: "Ādi Tāḷa", angas: [4, 2, 2], beats: 8 },
+  { name: "Rūpaka Tāḷa", angas: [2, 4], beats: 6 },
+  { name: "Miśra Cāpu", angas: [3, 4], beats: 7 },
 ];
 
 const syllables = ["TA", "KA", "DHI", "MI", "TA", "KA", "JO", "NU"];
@@ -90,6 +90,52 @@ function formatTime(seconds: number) {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function safeFileStem(name: string) {
+  return name.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "my-tala";
+}
+
+function audioBufferToWav(buffer: AudioBuffer) {
+  const channels = buffer.numberOfChannels;
+  const bytesPerSample = 2;
+  const dataLength = buffer.length * channels * bytesPerSample;
+  const wav = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(wav);
+  const writeText = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) view.setUint8(offset + index, value.charCodeAt(index));
+  };
+  writeText(0, "RIFF");
+  view.setUint32(4, 36 + dataLength, true);
+  writeText(8, "WAVE");
+  writeText(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * channels * bytesPerSample, true);
+  view.setUint16(32, channels * bytesPerSample, true);
+  view.setUint16(34, 16, true);
+  writeText(36, "data");
+  view.setUint32(40, dataLength, true);
+  let offset = 44;
+  for (let frame = 0; frame < buffer.length; frame += 1) {
+    for (let channel = 0; channel < channels; channel += 1) {
+      const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[frame]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += bytesPerSample;
+    }
+  }
+  return wav;
+}
+
 export default function Home() {
   const [bpm, setBpm] = useState(60);
   const [beats, setBeats] = useState<Beat[]>(() => Array.from({ length: 8 }, (_, i) => makeBeat(i)));
@@ -107,6 +153,10 @@ export default function Home() {
   const [focusedSubBeat, setFocusedSubBeat] = useState<number | null>(null);
   const [workspaceView, setWorkspaceView] = useState<"beats" | "subbeats" | "audio">("beats");
   const [subBeatClickEnabled, setSubBeatClickEnabled] = useState(true);
+  const [angas, setAngas] = useState<number[]>([4, 2, 2]);
+  const [importError, setImportError] = useState("");
+  const [renderingAudio, setRenderingAudio] = useState(false);
+  const importInput = useRef<HTMLInputElement>(null);
   const startedAt = useRef(0);
   const elapsedAtStart = useRef(0);
   const lastPlayedSlot = useRef("");
@@ -118,6 +168,17 @@ export default function Home() {
   const cycleDuration = beatDuration * beats.length;
   const cycle = Math.floor(elapsed / cycleDuration) + 1;
   const current = beats[selected] ?? beats[0];
+  const groupedBeats = useMemo(() => {
+    const groups: Array<{ number: number; start: number; beats: Beat[] }> = [];
+    let start = 0;
+    for (const size of angas) {
+      if (start >= beats.length) break;
+      groups.push({ number: groups.length + 1, start, beats: beats.slice(start, start + size) });
+      start += size;
+    }
+    if (start < beats.length) groups.push({ number: groups.length + 1, start, beats: beats.slice(start) });
+    return groups;
+  }, [angas, beats]);
 
   const overflowCount = useMemo(
     () => beats.filter((beat) => (beat.duration ?? 0) > beatDuration).length,
@@ -453,6 +514,28 @@ export default function Home() {
     playSubBeat(current.subPattern[index], index === 0, "custom", url);
   }
 
+  function clearBeatAudio(index: number) {
+    const beat = beats[index];
+    if (!beat) return;
+    if (beat.audioUrl) URL.revokeObjectURL(beat.audioUrl);
+    previewStop.current?.();
+    previewAudio.current?.pause();
+    setPreviewing(false);
+    setBeats((items) => items.map((item, beatIndex) => beatIndex === index
+      ? {
+          ...item,
+          fileName: undefined,
+          decodeError: undefined,
+          audioUrl: undefined,
+          audioBuffer: undefined,
+          duration: undefined,
+          trimStart: 0,
+          trimEnd: undefined,
+        }
+      : item));
+    setSaveState(`Removed audio from akshara ${index + 1}`);
+  }
+
   function deleteBeat(index: number) {
     if (beats.length <= 1) return;
     const beat = beats[index];
@@ -466,11 +549,25 @@ export default function Home() {
     });
     setActiveBeat(0);
     setElapsed(0);
+    setAngas((groups) => {
+      let cursor = 0;
+      const next = [...groups];
+      const groupIndex = next.findIndex((size) => {
+        cursor += size;
+        return index < cursor;
+      });
+      if (groupIndex >= 0) {
+        next[groupIndex] -= 1;
+        if (next[groupIndex] === 0) next.splice(groupIndex, 1);
+      }
+      return next.length ? next : [1];
+    });
   }
 
   function applyPreset(preset: (typeof talaPresets)[number]) {
     setTalaName(preset.name);
     setBeats(Array.from({ length: preset.beats }, (_, i) => beats[i] ?? makeBeat(i)));
+    setAngas([...preset.angas]);
     setSelected(0);
     setActiveBeat(0);
     setElapsed(0);
@@ -479,21 +576,214 @@ export default function Home() {
   function exportTala() {
     const arrangement = {
       format: "thalam-arrangement",
-      version: 1,
+      version: 2,
       name: talaName,
       bpm,
       beatCount: beats.length,
+      angas,
       beats: beats.map(({ audioUrl: _audioUrl, audioBuffer: _audioBuffer, subAudioUrls: _subAudioUrls, ...beat }) => beat),
     };
     const blob = new Blob([JSON.stringify(arrangement, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${talaName.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "my-thalam"}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${safeFileStem(talaName)}.json`);
     setSaveState("Tāḷa exported");
   }
+
+  async function importTala(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImportError("");
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== "object") throw new Error("This file does not contain a tāḷa arrangement.");
+      const arrangement = parsed as Record<string, unknown>;
+      if (arrangement.format !== "thalam-arrangement" || !Array.isArray(arrangement.beats)) {
+        throw new Error("Choose a Tāla Lab arrangement JSON file.");
+      }
+      if (arrangement.beats.length < 1 || arrangement.beats.length > 128) {
+        throw new Error("The arrangement must contain between 1 and 128 aksharas.");
+      }
+      const importedBeats = arrangement.beats.map((value, index) => {
+        if (!value || typeof value !== "object") throw new Error(`Akshara ${index + 1} is invalid.`);
+        const raw = value as Partial<Beat>;
+        const subdivision = Number.isInteger(raw.subdivision) && raw.subdivision! > 0 && raw.subdivision! <= 32
+          ? raw.subdivision!
+          : 4;
+        const base = makeBeat(index);
+        const subPattern = Array.from({ length: subdivision }, (_, subIndex) => {
+          const state = raw.subPattern?.[subIndex];
+          return state === "accent" || state === "mute" || state === "on" ? state : subIndex === 0 ? "accent" : "on";
+        });
+        const subSounds = Array.from({ length: subdivision }, (_, subIndex) => {
+          const sound = raw.subSounds?.[subIndex];
+          return sound === "beep" || sound === "boop" || sound === "custom" || sound === "tik" ? sound : "tik";
+        });
+        return {
+          ...base,
+          ...raw,
+          id: typeof raw.id === "number" ? raw.id : index + 1,
+          label: typeof raw.label === "string" ? raw.label : base.label,
+          syllable: typeof raw.syllable === "string" ? raw.syllable : base.syllable,
+          peaks: Array.isArray(raw.peaks) ? raw.peaks.filter((peak): peak is number => typeof peak === "number").slice(0, 96) : base.peaks,
+          subdivision,
+          subPattern,
+          subSounds,
+          subAudioUrls: Array(subdivision).fill(undefined),
+          subAudioNames: Array.from({ length: subdivision }, (_, subIndex) => raw.subAudioNames?.[subIndex]),
+          audioUrl: undefined,
+          audioBuffer: undefined,
+          duration: undefined,
+          trimEnd: undefined,
+          decodeError: raw.fileName ? "Reattach this audio file to restore playback." : undefined,
+        } satisfies Beat;
+      });
+      const importedBpm = typeof arrangement.bpm === "number" && Number.isFinite(arrangement.bpm)
+        ? Math.max(20, Math.min(300, arrangement.bpm))
+        : 60;
+      const importedAngas = Array.isArray(arrangement.angas)
+        ? arrangement.angas.filter((size): size is number => Number.isInteger(size) && size > 0)
+        : [];
+      const validAngas = importedAngas.reduce((sum, size) => sum + size, 0) === importedBeats.length
+        ? importedAngas
+        : [importedBeats.length];
+      beats.forEach((beat) => {
+        if (beat.audioUrl) URL.revokeObjectURL(beat.audioUrl);
+        beat.subAudioUrls.forEach((url) => url && URL.revokeObjectURL(url));
+      });
+      setPlaying(false);
+      setTalaName(typeof arrangement.name === "string" ? arrangement.name : file.name.replace(/\.json$/i, ""));
+      setBpm(importedBpm);
+      setBeats(importedBeats);
+      setAngas(validAngas);
+      setSelected(0);
+      setActiveBeat(0);
+      setActiveSubBeat(0);
+      setElapsed(0);
+      setSaveState(`Imported ${importedBeats.length} aksharas`);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Could not import this file.");
+    }
+  }
+
+  async function exportWav() {
+    if (renderingAudio) return;
+    setRenderingAudio(true);
+    setImportError("");
+    setSaveState("Rendering audio…");
+    try {
+      const sampleRate = 44100;
+      const duration = Math.max(0.1, cycleDuration);
+      const offline = new OfflineAudioContext(2, Math.ceil(duration * sampleRate), sampleRate);
+      const master = offline.createGain();
+      master.gain.value = 0.82;
+      master.connect(offline.destination);
+
+      beats.forEach((beat, beatIndex) => {
+        if (!beat.audioBuffer || beat.overflowMode === "mute") return;
+        const source = offline.createBufferSource();
+        const sourceBuffer = offline.createBuffer(
+          beat.audioBuffer.numberOfChannels,
+          beat.audioBuffer.length,
+          beat.audioBuffer.sampleRate,
+        );
+        for (let channel = 0; channel < beat.audioBuffer.numberOfChannels; channel += 1) {
+          const data = beat.audioBuffer.getChannelData(channel);
+          sourceBuffer.copyToChannel(beat.reverse ? Float32Array.from(data).reverse() : data, channel);
+        }
+        source.buffer = sourceBuffer;
+        source.playbackRate.value = beat.playbackRate * 2 ** (beat.pitch / 12);
+        source.loop = beat.loop;
+        source.loopStart = beat.trimStart;
+        source.loopEnd = beat.trimEnd ?? beat.duration ?? beatDuration;
+
+        const low = offline.createBiquadFilter();
+        low.type = "lowshelf";
+        low.frequency.value = 250;
+        low.gain.value = beat.lowEq;
+        const mid = offline.createBiquadFilter();
+        mid.type = "peaking";
+        mid.frequency.value = 1200;
+        mid.Q.value = 0.8;
+        mid.gain.value = beat.midEq;
+        const high = offline.createBiquadFilter();
+        high.type = "highshelf";
+        high.frequency.value = 4000;
+        high.gain.value = beat.highEq;
+        const compressor = offline.createDynamicsCompressor();
+        compressor.threshold.value = -12 - beat.compression * 36;
+        compressor.ratio.value = 1 + beat.compression * 11;
+        const panner = offline.createStereoPanner();
+        panner.pan.value = beat.pan;
+        const gain = offline.createGain();
+        const startsAt = beatIndex * beatDuration;
+        const selectionDuration = Math.max(0.01, (beat.trimEnd ?? beat.duration ?? beatDuration) - beat.trimStart);
+        const audibleDuration = Math.min(
+          beat.overflowMode === "trim" ? beatDuration : duration - startsAt,
+          selectionDuration / source.playbackRate.value,
+        );
+        gain.gain.setValueAtTime(beat.fadeIn > 0 ? 0 : beat.gain, startsAt);
+        if (beat.fadeIn > 0) gain.gain.linearRampToValueAtTime(beat.gain, startsAt + Math.min(beat.fadeIn, audibleDuration));
+        if (beat.fadeOut > 0) {
+          gain.gain.setValueAtTime(beat.gain, Math.max(startsAt, startsAt + audibleDuration - beat.fadeOut));
+          gain.gain.linearRampToValueAtTime(0, startsAt + audibleDuration);
+        }
+        source.connect(low).connect(mid).connect(high).connect(compressor).connect(panner).connect(gain).connect(master);
+        source.start(startsAt, beat.trimStart, beat.loop ? undefined : selectionDuration);
+        source.stop(Math.min(duration, startsAt + audibleDuration));
+      });
+
+      if (subBeatClickEnabled) {
+        beats.forEach((beat, beatIndex) => {
+          beat.subPattern.forEach((state, subIndex) => {
+            if (state === "mute") return;
+            const startsAt = beatIndex * beatDuration + subIndex * beatDuration / beat.subdivision;
+            const oscillator = offline.createOscillator();
+            const gain = offline.createGain();
+            const sound = beat.subSounds[subIndex];
+            const baseFrequency = sound === "beep" ? 660 : sound === "boop" ? 220 : 880;
+            const clickDuration = sound === "beep" ? 0.12 : sound === "boop" ? 0.16 : 0.045;
+            oscillator.frequency.value = state === "accent" || subIndex === 0 ? baseFrequency * 1.35 : baseFrequency;
+            gain.gain.setValueAtTime(state === "accent" || subIndex === 0 ? 0.11 : 0.04, startsAt);
+            gain.gain.exponentialRampToValueAtTime(0.0001, Math.min(duration, startsAt + clickDuration));
+            oscillator.connect(gain).connect(master);
+            oscillator.start(startsAt);
+            oscillator.stop(Math.min(duration, startsAt + clickDuration + 0.005));
+          });
+        });
+      }
+      const rendered = await offline.startRendering();
+      downloadBlob(new Blob([audioBufferToWav(rendered)], { type: "audio/wav" }), `${safeFileStem(talaName)}.wav`);
+      setSaveState("WAV exported");
+    } catch {
+      setImportError("Audio rendering failed. Try reattaching clips or using a shorter cycle.");
+      setSaveState("Render failed");
+    } finally {
+      setRenderingAudio(false);
+    }
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        togglePlay();
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const direction = event.key === "ArrowLeft" ? -1 : 1;
+        setSelected((index) => Math.max(0, Math.min(beats.length - 1, index + direction)));
+        setFocusedSubBeat(null);
+      } else if (event.key === "Delete" || event.key === "Backspace") {
+        if (beats[selected]?.audioUrl || beats[selected]?.fileName) {
+          event.preventDefault();
+          clearBeatAudio(selected);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [beats, playing, selected]);
 
   return (
     <main>
@@ -509,7 +799,12 @@ export default function Home() {
           <button className={infoPanel === "guide" ? "nav-active" : ""} onClick={() => setInfoPanel("guide")}>Guide</button>
           <button className={infoPanel === "learn" ? "nav-active" : ""} onClick={() => setInfoPanel("learn")}>Learn</button>
         </nav>
-        <button className="save-button" onClick={exportTala}>Export tāḷa</button>
+        <div className="file-actions">
+          <input ref={importInput} type="file" accept="application/json,.json" onChange={importTala} />
+          <button onClick={() => importInput.current?.click()}>Import JSON</button>
+          <button onClick={exportWav} disabled={renderingAudio}>{renderingAudio ? "Rendering…" : "Export WAV"}</button>
+          <button className="save-button" onClick={exportTala}>Export JSON</button>
+        </div>
       </header>
 
       <section className="hero">
@@ -525,15 +820,16 @@ export default function Home() {
       </section>
 
       <section className="workspace">
+        {importError && <div className="file-error" role="alert"><span>{importError}</span><button onClick={() => setImportError("")} aria-label="Dismiss">×</button></div>}
         <aside className="sidebar">
           <div className="section-heading"><span>Quick start</span><small>PRESETS</small></div>
           {talaPresets.map((preset) => (
             <button className="preset" key={preset.name} onClick={() => applyPreset(preset)}>
-              <span><strong>{preset.name}</strong><small>{preset.angas}</small></span>
+              <span><strong>{preset.name}</strong><small>{preset.angas.join(" + ")}</small></span>
               <b>{preset.beats}</b>
             </button>
           ))}
-          <button className="new-tala" onClick={() => { setTalaName("Untitled tāḷa"); setBeats(Array.from({ length: 4 }, (_, i) => makeBeat(i))); }}>
+          <button className="new-tala" onClick={() => { setTalaName("Untitled tāḷa"); setBeats(Array.from({ length: 4 }, (_, i) => makeBeat(i))); setAngas([4]); setSelected(0); }}>
             <span>＋</span> New tāḷa
           </button>
           <div className="notation-note">
@@ -600,50 +896,62 @@ export default function Home() {
 
           {workspaceView === "beats" && <>
           <div className="timeline-head">
-            <div><h2>Akshara sequence</h2><span>{overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "All clips fit their slots"}</span></div>
-            <button onClick={() => setBeats((items) => [...items, { ...makeBeat(items.length), id: Math.max(...items.map((beat) => beat.id)) + 1 }])}>＋ Add akshara</button>
+            <div><h2>Akshara sequence</h2><span>Angas {angas.join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all clips fit"}</span></div>
+            <button onClick={() => {
+              setBeats((items) => [...items, { ...makeBeat(items.length), id: Math.max(...items.map((beat) => beat.id)) + 1 }]);
+              setAngas((groups) => [...groups.slice(0, -1), (groups.at(-1) ?? 0) + 1]);
+            }}>＋ Add akshara</button>
           </div>
 
-          <div className="beat-grid">
-            {beats.map((beat, index) => {
-              const tooLong = (beat.duration ?? 0) > beatDuration;
-              return (
-                <article
-                  key={beat.id}
-                  className={`beat-card ${selected === index ? "selected" : ""} ${activeBeat === index && playing ? "active" : ""}`}
-                  onClick={() => { setSelected(index); setFocusedSubBeat(null); }}
-                >
-                  <div className="beat-top">
-                    <span>{index + 1}</span>
-                    <small>{beat.syllable}</small>
-                    <button
-                      className="delete-beat"
-                      disabled={beats.length <= 1}
-                      aria-label={`Delete akshara ${index + 1}`}
-                      title={beats.length <= 1 ? "A tāḷa needs at least one akshara" : `Delete akshara ${index + 1}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        deleteBeat(index);
-                      }}
-                    >×</button>
-                  </div>
-                  <div className={`mini-wave ${beat.fileName ? "has-audio" : ""}`}>
-                    {beat.peaks.slice(0, 20).map((peak, i) => <i key={i} style={{ height: `${peak * 100}%` }} />)}
-                  </div>
-                  <div className="card-subbeats" aria-label={`${beat.subdivision} sub-beats`}>
-                    {beat.subPattern.map((state, subIndex) => <i key={subIndex} className={`${state} ${playing && activeBeat === index && activeSubBeat === subIndex ? "playing" : ""}`} />)}
-                  </div>
-                  <label className="upload">
-                    <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(e) => uploadAudio(e, index)} />
-                    {beat.fileName ? <><strong>{beat.fileName}</strong><small>{beat.decodeError ?? `${beat.duration?.toFixed(2)} sec`}</small></> : <><strong>＋ Add sound</strong><small>WAV, MP3, M4A, OPUS</small></>}
-                  </label>
-                  {beat.decodeError && <span className="decode-error">!</span>}
-                  {tooLong && <span className="warning">↗ {(beat.duration! - beatDuration).toFixed(2)}s over</span>}
-                </article>
-              );
-            })}
+          <div className="anga-sequence">
+            {groupedBeats.map((group) => (
+              <section className="anga-group" key={`${group.start}-${group.beats.length}`}>
+                <div className="anga-label"><span>AṄGA {group.number}</span><strong>{group.beats.length} AKSHARAS</strong></div>
+                <div className="beat-grid">
+                  {group.beats.map((beat, offset) => {
+                    const index = group.start + offset;
+                    const tooLong = (beat.duration ?? 0) > beatDuration;
+                    return (
+                      <article
+                        key={beat.id}
+                        className={`beat-card ${selected === index ? "selected" : ""} ${activeBeat === index && playing ? "active" : ""}`}
+                        onClick={() => { setSelected(index); setFocusedSubBeat(null); }}
+                      >
+                        <div className="beat-top">
+                          <span>{index + 1}</span>
+                          <small>{beat.syllable}</small>
+                          <button
+                            className="delete-beat"
+                            disabled={beats.length <= 1}
+                            aria-label={`Delete akshara ${index + 1}`}
+                            title={beats.length <= 1 ? "A tāḷa needs at least one akshara" : `Delete akshara ${index + 1}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              deleteBeat(index);
+                            }}
+                          >×</button>
+                        </div>
+                        <div className={`mini-wave ${beat.fileName ? "has-audio" : ""}`}>
+                          {beat.peaks.slice(0, 20).map((peak, i) => <i key={i} style={{ height: `${peak * 100}%` }} />)}
+                        </div>
+                        <div className="card-subbeats" aria-label={`${beat.subdivision} sub-beats`}>
+                          {beat.subPattern.map((state, subIndex) => <i key={subIndex} className={`${state} ${playing && activeBeat === index && activeSubBeat === subIndex ? "playing" : ""}`} />)}
+                        </div>
+                        <label className="upload">
+                          <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(e) => uploadAudio(e, index)} />
+                          {beat.fileName ? <><strong>{beat.fileName}</strong><small>{beat.decodeError ?? `${beat.duration?.toFixed(2)} sec`}</small></> : <><strong>＋ Add sound</strong><small>WAV, MP3, M4A, OPUS</small></>}
+                        </label>
+                        {beat.decodeError && <span className="decode-error">!</span>}
+                        {tooLong && <span className="warning">↗ {(beat.duration! - beatDuration).toFixed(2)}s over</span>}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
           <div className="cycle-brace"><span>1 CYCLE · {cycleDuration.toFixed(2)} SECONDS</span></div>
+          <p className="shortcut-hint">Shortcuts: <kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> select akshara · <kbd>Delete</kbd> remove its audio</p>
           </>}
 
           {workspaceView === "subbeats" && <section className="subdivision-editor">
