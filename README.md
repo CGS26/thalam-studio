@@ -7,7 +7,8 @@ The production app is hosted on Vercel and can be installed as a Progressive
 Web App (PWA) on phones and desktop computers.
 
 [Source code](https://github.com/CGS26/thalam-studio) ·
-[Report a bug](https://github.com/CGS26/thalam-studio/issues/new/choose)
+[Report a bug](https://github.com/CGS26/thalam-studio/issues/new/choose) ·
+[Latest release](https://github.com/CGS26/thalam-studio/releases/tag/v1.0.0)
 
 ## Features
 
@@ -130,6 +131,8 @@ Google Fonts integration makes an external font request. See the in-app
 ## Open Source
 
 Tāla Lab is available under the [MIT License](LICENSE).
+The current stable release is **v1.0.0**; release history is documented in
+[CHANGELOG.md](CHANGELOG.md).
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 - Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
