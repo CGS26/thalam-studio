@@ -103,6 +103,7 @@ export default function Home() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [infoPanel, setInfoPanel] = useState<"guide" | "learn" | null>(null);
   const [focusedSubBeat, setFocusedSubBeat] = useState<number | null>(null);
+  const [workspaceView, setWorkspaceView] = useState<"beats" | "subbeats" | "audio">("beats");
   const startedAt = useRef(0);
   const elapsedAtStart = useRef(0);
   const lastPlayedSlot = useRef("");
@@ -366,6 +367,7 @@ export default function Home() {
       ),
     );
     setSelected(index);
+    setWorkspaceView("audio");
   }
 
   function updateBeat(patch: Partial<Beat>) {
@@ -532,6 +534,32 @@ export default function Home() {
             <div className="position"><span>AKSHARA · MĀTRA</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>sub-beat {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
           </div>
 
+          <div className="workspace-tabs" role="tablist" aria-label="Composer steps">
+            <button className={workspaceView === "beats" ? "active" : ""} onClick={() => setWorkspaceView("beats")} role="tab" aria-selected={workspaceView === "beats"}>
+              <span>1</span><b>Beats</b><small>Arrange the tāḷa</small>
+            </button>
+            <button className={workspaceView === "subbeats" ? "active" : ""} onClick={() => setWorkspaceView("subbeats")} role="tab" aria-selected={workspaceView === "subbeats"}>
+              <span>2</span><b>Sub-beats</b><small>Set nadai and sounds</small>
+            </button>
+            <button className={workspaceView === "audio" ? "active" : ""} onClick={() => setWorkspaceView("audio")} role="tab" aria-selected={workspaceView === "audio"}>
+              <span>3</span><b>Audio</b><small>Trim and shape</small>
+            </button>
+          </div>
+
+          {workspaceView !== "beats" && (
+            <div className="beat-switcher">
+              <span>Editing akshara</span>
+              <div>
+                {beats.map((beat, index) => (
+                  <button key={beat.id} className={selected === index ? "active" : ""} onClick={() => { setSelected(index); setFocusedSubBeat(null); }}>
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {workspaceView === "beats" && <>
           <div className="timeline-head">
             <div><h2>Akshara sequence</h2><span>{overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "All clips fit their slots"}</span></div>
             <button onClick={() => setBeats((items) => [...items, { ...makeBeat(items.length), id: Math.max(...items.map((beat) => beat.id)) + 1 }])}>＋ Add akshara</button>
@@ -576,8 +604,10 @@ export default function Home() {
               );
             })}
           </div>
+          <div className="cycle-brace"><span>1 CYCLE · {cycleDuration.toFixed(2)} SECONDS</span></div>
+          </>}
 
-          <section className="subdivision-editor">
+          {workspaceView === "subbeats" && <section className="subdivision-editor">
             <div className="subdivision-head">
               <div>
                 <span className="section-number">A</span>
@@ -636,11 +666,9 @@ export default function Home() {
               <span><i className="legend accent" /> Accent <i className="legend on" /> Normal <i className="legend mute" /> Muted</span>
               <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision}-nadai to all aksharas</button>
             </div>
-          </section>
+          </section>}
 
-          <div className="cycle-brace"><span>1 CYCLE · {cycleDuration.toFixed(2)} SECONDS</span></div>
-
-          {current?.audioUrl && <section className="editor">
+          {workspaceView === "audio" && (current?.audioUrl ? <section className="editor">
             <div className="editor-head">
               <div><span className="editor-index">{selected + 1}</span><h3>{current?.fileName ?? `Akshara ${selected + 1}`}</h3></div>
               <div className="editor-actions">
@@ -763,7 +791,12 @@ export default function Home() {
             ) : (
               <div className="empty-editor"><strong>Drop a sound on this akshara</strong><span>Its waveform and timing choices will appear here.</span></div>
             )}
-          </section>}
+          </section> : <section className="audio-start">
+            <span>♪</span>
+            <h3>Add audio to Akshara {selected + 1}</h3>
+            <p>Return to Beats and choose “Add sound” on an akshara. The waveform editor will appear here automatically.</p>
+            <button onClick={() => setWorkspaceView("beats")}>Go to beats</button>
+          </section>)}
         </div>
       </section>
 

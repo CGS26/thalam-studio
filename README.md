@@ -19,6 +19,19 @@ npm run dev
 npm run build
 ```
 
+## Deploy to GitHub Pages
+
+The included workflow at `.github/workflows/deploy-pages.yml` builds and
+publishes the app whenever `main` is pushed.
+
+1. Push this project to a GitHub repository, preferably named `thalam-studio`.
+2. Open **Settings → Pages** in the repository.
+3. Set **Source** to **GitHub Actions**.
+4. Push to `main` or run the workflow manually from the **Actions** tab.
+
+The workflow automatically uses the actual repository name as the Pages base
+path, so forks and renamed repositories continue to work.
+
 ## Included Shape
 
 - edit site code under `app/`

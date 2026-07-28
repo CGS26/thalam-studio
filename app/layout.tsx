@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export const metadata: Metadata = {
   title: "Thalam Studio — Carnatic Rhythm Composer",
   description:
@@ -8,17 +10,17 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Thalam Studio — Carnatic Rhythm Composer",
     description: "Shape rhythm. Hear every akshara.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Thālam rhythm studio" }],
+    images: [{ url: `${basePath}/og.png`, width: 1200, height: 630, alt: "Thalam Studio rhythm composer" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Thalam Studio — Carnatic Rhythm Composer",
     description: "Shape rhythm. Hear every akshara.",
-    images: ["/og.png"],
+    images: [`${basePath}/og.png`],
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: `${basePath}/favicon.svg`,
+    shortcut: `${basePath}/favicon.svg`,
   },
 };
 
@@ -31,8 +33,8 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="theme-color" content="#231d19" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="manifest" href={`${basePath}/manifest.webmanifest`} />
+        <link rel="apple-touch-icon" href={`${basePath}/favicon.svg`} />
       </head>
       <body>{children}</body>
     </html>
