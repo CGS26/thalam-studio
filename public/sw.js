@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tala-lab-v1";
+const CACHE_VERSION = "tala-lab-v2";
 const APP_SHELL = [
   "./",
   "./manifest.webmanifest",
@@ -51,14 +51,16 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
+    fetch(request)
+      .then((response) => {
         if (!response.ok) return response;
         const copy = response.clone();
         void caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
         return response;
-      });
-    }),
+      })
+      .catch(async () => (
+        await caches.match(request)
+        ?? Response.error()
+      )),
   );
 });

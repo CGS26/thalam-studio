@@ -1024,7 +1024,7 @@ export default function Home() {
 
         <div className="composer">
           <div className="composer-heading">
-            <div><span>COMPOSITION</span><h1>Build your rhythmic cycle</h1><p>Arrange the pulse, tune the subdivisions, then shape every sound.</p></div>
+          <div><span>TĀḶA ARRANGEMENT</span><h1>Compose your rhythm</h1><p>Arrange aksharas (beats), choose the nadai, and add your sounds.</p></div>
             <span className="save-state">● {saveState}</span>
           </div>
           <div className="tala-title-row">
@@ -1060,13 +1060,49 @@ export default function Home() {
           <div className="studio-grid">
           <section className="arrangement-panel">
           <div className="timeline-head">
-            <div><h2>Akshara sequence</h2><span>Structure {sections.map(sectionLength).join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all clips fit"}</span></div>
+            <div><h2>Akshara (beat) timeline</h2><span>Structure {sections.map(sectionLength).join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all sounds fit their beats"}</span></div>
             <div className="timeline-actions">
               <button onClick={() => addAkshara()}>＋ Add akshara</button>
               <button className="primary" onClick={() => addAkshara(true)}>＋ Add group</button>
             </div>
           </div>
 
+          <div className="cycle-stage" aria-label="Visual tāḷa cycle">
+            <div className="cycle-orbit">
+              <div className="cycle-centre">
+                <span>ONE CYCLE</span>
+                <strong>{beats.length}</strong>
+                <small>aksharas · {cycleDuration.toFixed(1)}s</small>
+              </div>
+              {beats.map((beat, index) => {
+                const angle = (index / beats.length) * Math.PI * 2 - Math.PI / 2;
+                return (
+                  <button
+                    key={beat.id}
+                    className={`orbit-beat ${selected === index ? "selected" : ""} ${playing && activeBeat === index ? "playing" : ""}`}
+                    style={{
+                      left: `${50 + Math.cos(angle) * 39}%`,
+                      top: `${50 + Math.sin(angle) * 39}%`,
+                    }}
+                    onClick={() => { setSelected(index); setFocusedSubBeat(null); }}
+                    aria-label={`Select akshara ${index + 1}`}
+                  >
+                    <b>{index + 1}</b>
+                    <span>{beat.syllable}</span>
+                    <i>{beat.subdivision}</i>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="cycle-selection">
+              <span>SELECTED PULSE</span>
+              <strong>Akshara {selected + 1}</strong>
+              <p>{current.subdivision} subdivisions · {current.fileName ?? "No audio assigned"}</p>
+              <button onClick={() => document.getElementById("beat-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Edit this pulse →</button>
+            </div>
+          </div>
+
+          <div className="structure-heading"><span>CYCLE STRUCTURE</span><small>Edit aṅgas without leaving the cycle</small></div>
           <div className="anga-sequence">
             {groupedBeats.map((group, groupIndex) => (
               <section className="anga-group" key={`${group.start}-${group.beats.length}`}>
@@ -1173,9 +1209,9 @@ export default function Home() {
           <aside className="inspector-panel">
           <div className="inspector-heading" id="beat-inspector">
             <div>
-              <span>SELECTED AKSHARA</span>
-              <h2>Akshara {selected + 1}</h2>
-              <p>Subdivisions and sound controls for this pulse are kept together below.</p>
+              <span>EDITING AKSHARA {selected + 1}</span>
+              <h2>Beat {selected + 1} controls</h2>
+              <p>Set its nadai (subdivisions), accents, click sounds, and audio sample.</p>
             </div>
             <div className="inspector-beat-switcher">
               {beats.map((beat, index) => (
@@ -1191,7 +1227,7 @@ export default function Home() {
             <div className="subdivision-head">
               <div>
                 <span className="section-number">A</span>
-                <div><h3>Subdivisions inside Akshara {selected + 1}</h3><p>Choose 1–16 equal subdivisions. The five traditional nadais are named below.</p></div>
+                <div><h3>Nadai / subdivisions</h3><p>Choose how many equal notes play inside this akshara (beat).</p></div>
               </div>
               <span className="sub-duration">{(beatDuration / current.subdivision).toFixed(3)}s per subdivision</span>
             </div>
@@ -1373,8 +1409,12 @@ export default function Home() {
             )}
           </section> : <section className="audio-start">
             <span>♪</span>
-            <h3>Add audio to Akshara {selected + 1}</h3>
-            <p>Use “Add sound” on the selected akshara above. Its waveform and shaping controls will appear here automatically.</p>
+            <h3>Add a sound to beat {selected + 1}</h3>
+            <p>Upload a sample or recording. Trimming, pitch, volume, and timing controls will appear here.</p>
+            <label className="inspector-upload">
+              <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(event) => uploadAudio(event, selected)} />
+              Choose audio file
+            </label>
           </section>}
           </div>
           </aside>
