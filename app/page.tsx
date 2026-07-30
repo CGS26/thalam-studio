@@ -247,7 +247,6 @@ export default function Home() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [infoPanel, setInfoPanel] = useState<"guide" | "learn" | null>(null);
   const [focusedSubBeat, setFocusedSubBeat] = useState<number | null>(null);
-  const [workspaceView, setWorkspaceView] = useState<"beats" | "subbeats" | "audio">("beats");
   const [subBeatClickEnabled, setSubBeatClickEnabled] = useState(true);
   const [sections, setSections] = useState<TalaSection[]>([
     { type: "laghu", jati: 4 },
@@ -558,7 +557,7 @@ export default function Home() {
       ),
     );
     setSelected(index);
-    setWorkspaceView("audio");
+    window.setTimeout(() => document.getElementById("beat-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
   function updateBeat(patch: Partial<Beat>) {
@@ -985,51 +984,49 @@ export default function Home() {
           </span>
           <div><strong>Tāla Lab</strong><small>Carnatic rhythm studio</small></div>
         </div>
-        <nav aria-label="Primary navigation">
-          <button className={!infoPanel ? "nav-active" : ""} onClick={() => setInfoPanel(null)}>Composer</button>
-          <button className={infoPanel === "guide" ? "nav-active" : ""} onClick={() => setInfoPanel("guide")}>Guide</button>
-          <button className={infoPanel === "learn" ? "nav-active" : ""} onClick={() => setInfoPanel("learn")}>Learn</button>
-        </nav>
+        <div className="topbar-context">
+          <span>Now composing</span>
+          <strong>{talaName}</strong>
+        </div>
         <div className="file-actions">
           <input ref={importInput} type="file" accept="application/json,.json" onChange={importTala} />
-          <button onClick={() => importInput.current?.click()}>Import JSON</button>
-          <button onClick={exportWav} disabled={renderingAudio}>{renderingAudio ? "Rendering…" : "Export WAV"}</button>
-          <button className="save-button" onClick={exportTala}>Export JSON</button>
+          <button onClick={() => importInput.current?.click()}>Import</button>
+          <button className="save-button" onClick={exportWav} disabled={renderingAudio}>{renderingAudio ? "Rendering…" : "Export audio"}</button>
         </div>
       </header>
-
-      <section className="hero">
-        <div>
-          <span className="eyebrow">TĀḶA WORKBENCH</span>
-          <h1>Shape rhythm.<br /><em>Hear every akshara.</em></h1>
-          <p>Build, arrange, and rehearse Carnatic rhythm cycles with your own sounds.</p>
-        </div>
-        <div className="hero-meta">
-          <span>{saveState}</span>
-          <strong>{beats.length} aksharas · {bpm} BPM</strong>
-        </div>
-      </section>
 
       <section className="workspace">
         {importError && <div className="file-error" role="alert"><span>{importError}</span><button onClick={() => setImportError("")} aria-label="Dismiss">×</button></div>}
         <aside className="sidebar">
-          <div className="section-heading"><span>Quick start</span><small>PRESETS</small></div>
-          {talaPresets.map((preset) => (
-            <button className="preset" key={preset.name} onClick={() => applyPreset(preset)}>
-              <span><strong>{preset.name}</strong><small>{preset.sections.map(sectionLength).join(" + ")}</small></span>
-              <b>{totalAksharas(preset.sections)}</b>
+          <div className="rail-intro">
+            <span className="eyebrow">CURRENT CYCLE</span>
+            <strong>{beats.length} aksharas</strong>
+            <p>{sections.map(sectionLength).join(" + ")} structure · {cycleDuration.toFixed(2)} seconds</p>
+          </div>
+          <div className="rail-presets">
+            <div className="section-heading"><span>Start from</span><small>PRESETS</small></div>
+            {talaPresets.map((preset) => (
+              <button className="preset" key={preset.name} onClick={() => applyPreset(preset)}>
+                <span><strong>{preset.name}</strong><small>{preset.sections.map(sectionLength).join(" + ")}</small></span>
+                <b>{totalAksharas(preset.sections)}</b>
+              </button>
+            ))}
+            <button className="new-tala" onClick={() => { setTalaName("Untitled tāḷa"); setBeats(Array.from({ length: 4 }, (_, i) => makeBeat(i))); setSections([{ type: "custom", aksharas: 4 }]); setSelected(0); }}>
+              <span>＋</span> Blank cycle
             </button>
-          ))}
-          <button className="new-tala" onClick={() => { setTalaName("Untitled tāḷa"); setBeats(Array.from({ length: 4 }, (_, i) => makeBeat(i))); setSections([{ type: "custom", aksharas: 4 }]); setSelected(0); }}>
-            <span>＋</span> New tāḷa
-          </button>
-          <div className="notation-note">
-            <span>⌁</span>
-            <p><strong>Akshara</strong> is one pulse in a tāḷa cycle. “Beat” is shown alongside it for clarity.</p>
+          </div>
+          <div className="rail-actions">
+            <button onClick={exportTala}>Save project</button>
+            <button onClick={() => setInfoPanel("guide")}>Quick guide</button>
+            <button onClick={() => setInfoPanel("learn")}>Rhythm glossary</button>
           </div>
         </aside>
 
         <div className="composer">
+          <div className="composer-heading">
+            <div><span>COMPOSITION</span><h1>Build your rhythmic cycle</h1><p>Arrange the pulse, tune the subdivisions, then shape every sound.</p></div>
+            <span className="save-state">● {saveState}</span>
+          </div>
           <div className="tala-title-row">
             <div>
               <label htmlFor="tala-name">TĀḶA NAME</label>
@@ -1060,32 +1057,8 @@ export default function Home() {
             <div className="position"><span>AKSHARA · SUBDIVISION</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>subdivision {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
           </div>
 
-          <div className="workspace-tabs" role="tablist" aria-label="Composer steps">
-            <button className={workspaceView === "beats" ? "active" : ""} onClick={() => setWorkspaceView("beats")} role="tab" aria-selected={workspaceView === "beats"}>
-              <span>1</span><b>Beats</b><small>Arrange the tāḷa</small>
-            </button>
-            <button className={workspaceView === "subbeats" ? "active" : ""} onClick={() => setWorkspaceView("subbeats")} role="tab" aria-selected={workspaceView === "subbeats"}>
-              <span>2</span><b>Sub-beats</b><small>Set nadai and sounds</small>
-            </button>
-            <button className={workspaceView === "audio" ? "active" : ""} onClick={() => setWorkspaceView("audio")} role="tab" aria-selected={workspaceView === "audio"}>
-              <span>3</span><b>Audio</b><small>Trim and shape</small>
-            </button>
-          </div>
-
-          {workspaceView !== "beats" && (
-            <div className="beat-switcher">
-              <span>Editing akshara</span>
-              <div>
-                {beats.map((beat, index) => (
-                  <button key={beat.id} className={selected === index ? "active" : ""} onClick={() => { setSelected(index); setFocusedSubBeat(null); }}>
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {workspaceView === "beats" && <>
+          <div className="studio-grid">
+          <section className="arrangement-panel">
           <div className="timeline-head">
             <div><h2>Akshara sequence</h2><span>Structure {sections.map(sectionLength).join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all clips fit"}</span></div>
             <div className="timeline-actions">
@@ -1169,6 +1142,17 @@ export default function Home() {
                         <div className="card-subbeats" aria-label={`${beat.subdivision} sub-beats`}>
                           {beat.subPattern.map((state, subIndex) => <i key={subIndex} className={`${state} ${playing && activeBeat === index && activeSubBeat === subIndex ? "playing" : ""}`} />)}
                         </div>
+                        <button
+                          className="edit-subdivisions"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelected(index);
+                            setFocusedSubBeat(null);
+                            window.setTimeout(() => document.getElementById("beat-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                          }}
+                        >
+                          Open inspector →
+                        </button>
                         <label className="upload">
                           <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(e) => uploadAudio(e, index)} />
                           {beat.fileName ? <><strong>{beat.fileName}</strong><small>{beat.decodeError ?? `${beat.duration?.toFixed(2)} sec`}</small></> : <><strong>＋ Add sound</strong><small>WAV, MP3, M4A, OPUS</small></>}
@@ -1184,9 +1168,26 @@ export default function Home() {
           </div>
           <div className="cycle-brace"><span>1 CYCLE · {cycleDuration.toFixed(2)} SECONDS</span></div>
           <p className="shortcut-hint">Shortcuts: <kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> select akshara · <kbd>Delete</kbd> remove its audio</p>
-          </>}
+          </section>
 
-          {workspaceView === "subbeats" && <section className="subdivision-editor">
+          <aside className="inspector-panel">
+          <div className="inspector-heading" id="beat-inspector">
+            <div>
+              <span>SELECTED AKSHARA</span>
+              <h2>Akshara {selected + 1}</h2>
+              <p>Subdivisions and sound controls for this pulse are kept together below.</p>
+            </div>
+            <div className="inspector-beat-switcher">
+              {beats.map((beat, index) => (
+                <button key={beat.id} className={selected === index ? "active" : ""} onClick={() => { setSelected(index); setFocusedSubBeat(null); }}>
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="unified-inspector">
+          <section className="subdivision-editor">
             <div className="subdivision-head">
               <div>
                 <span className="section-number">A</span>
@@ -1245,9 +1246,9 @@ export default function Home() {
               <span><i className="legend accent" /> Accent <i className="legend on" /> Normal <i className="legend mute" /> Muted</span>
               <button onClick={() => setSubdivision(current.subdivision, true)}>Apply {current.subdivision} subdivisions to all aksharas</button>
             </div>
-          </section>}
+          </section>
 
-          {workspaceView === "audio" && (current?.audioUrl ? <section className="editor">
+          {current?.audioUrl ? <section className="editor">
             <div className="editor-head">
               <div><span className="editor-index">{selected + 1}</span><h3>{current?.fileName ?? `Akshara ${selected + 1}`}</h3></div>
               <div className="editor-actions">
@@ -1373,9 +1374,11 @@ export default function Home() {
           </section> : <section className="audio-start">
             <span>♪</span>
             <h3>Add audio to Akshara {selected + 1}</h3>
-            <p>Return to Beats and choose “Add sound” on an akshara. The waveform editor will appear here automatically.</p>
-            <button onClick={() => setWorkspaceView("beats")}>Go to beats</button>
-          </section>)}
+            <p>Use “Add sound” on the selected akshara above. Its waveform and shaping controls will appear here automatically.</p>
+          </section>}
+          </div>
+          </aside>
+          </div>
         </div>
       </section>
 
