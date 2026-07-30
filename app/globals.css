@@ -1520,6 +1520,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label:focus-wit
   grid-template-columns: minmax(660px, 1.35fr) minmax(430px, .8fr);
   gap: 12px;
 }
+.studio-grid.inspector-closed { grid-template-columns: 1fr; }
 .arrangement-panel,
 .inspector-panel {
   min-width: 0;
@@ -2152,6 +2153,20 @@ body {
 .inspector-title > span { font-size: 18px; }
 .inspector-beat-switcher button { border-color: #343a44; background: #20242b; color: #9299a5; }
 .inspector-beat-switcher button.active { border-color: var(--gold); background: var(--gold); color: #171a13; }
+.inspector-beat-switcher .close-inspector {
+  width: 34px;
+  height: 34px;
+  margin-left: 0;
+  border-color: #49353a;
+  background: #2a2024;
+  color: #ff9b8a;
+  font-size: 16px;
+}
+.inspector-beat-switcher .close-inspector:hover {
+  border-color: var(--red);
+  background: #372327;
+  color: white;
+}
 .unified-inspector > .subdivision-editor,
 .unified-inspector > .editor,
 .unified-inspector > .audio-start { border-color: #2b3039; background: #1c1f25; }

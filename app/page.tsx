@@ -240,6 +240,7 @@ export default function Home() {
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [selected, setSelected] = useState(0);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [talaName, setTalaName] = useState("My morning korvai");
   const [saveState, setSaveState] = useState("Database-free");
   const [waveZoom, setWaveZoom] = useState(1);
@@ -329,9 +330,24 @@ export default function Home() {
     };
   }, []);
 
-  function togglePlay() {
+  async function ensureAudioReady() {
+    const context = clickContext.current ?? new AudioContext();
+    clickContext.current = context;
+    if (context.state === "suspended") await context.resume();
+    const Tone = await import("tone");
+    await Tone.start();
+  }
+
+  async function togglePlay() {
     if (playing) {
       setPlaying(false);
+      return;
+    }
+    try {
+      await ensureAudioReady();
+    } catch (error) {
+      console.error("Audio could not be started:", error);
+      setSaveState("Tap play again to enable audio");
       return;
     }
     startedAt.current = performance.now();
@@ -350,6 +366,12 @@ export default function Home() {
       startedAt.current = performance.now();
       elapsedAtStart.current = value;
     }
+  }
+
+  function selectAkshara(index: number) {
+    setSelected(index);
+    setFocusedSubBeat(null);
+    setInspectorOpen(true);
   }
 
   function stopPlayback() {
@@ -479,7 +501,7 @@ export default function Home() {
     }
   }
 
-  function togglePreview() {
+  async function togglePreview() {
     if (previewing) {
       previewStop.current?.();
       previewAudio.current?.pause();
@@ -487,7 +509,13 @@ export default function Home() {
       setPreviewing(false);
       return;
     }
-    if (current) playBeat(current, true);
+    try {
+      await ensureAudioReady();
+      if (current) await playBeat(current, true);
+    } catch (error) {
+      console.error("Audio preview could not be started:", error);
+      setSaveState("Tap preview again to enable audio");
+    }
   }
 
   function resetEdit() {
@@ -1057,7 +1085,7 @@ export default function Home() {
             <div className="position"><span>AKSHARA · SUBDIVISION</span><strong>{activeBeat + 1}<i>/ {beats.length}</i></strong><small>subdivision {activeSubBeat + 1} / {beats[activeBeat]?.subdivision ?? 1}</small></div>
           </div>
 
-          <div className="studio-grid">
+          <div className={`studio-grid ${inspectorOpen ? "" : "inspector-closed"}`}>
           <section className="arrangement-panel">
           <div className="timeline-head">
             <div><h2>Akshara (beat) timeline</h2><span>Structure {sections.map(sectionLength).join(" + ")} · {overflowCount ? `${overflowCount} audio ${overflowCount === 1 ? "clip exceeds" : "clips exceed"} its slot` : "all sounds fit their beats"}</span></div>
@@ -1079,12 +1107,12 @@ export default function Home() {
                 return (
                   <button
                     key={beat.id}
-                    className={`orbit-beat ${selected === index ? "selected" : ""} ${playing && activeBeat === index ? "playing" : ""}`}
+                    className={`orbit-beat ${inspectorOpen && selected === index ? "selected" : ""} ${playing && activeBeat === index ? "playing" : ""}`}
                     style={{
                       left: `${50 + Math.cos(angle) * 39}%`,
                       top: `${50 + Math.sin(angle) * 39}%`,
                     }}
-                    onClick={() => { setSelected(index); setFocusedSubBeat(null); }}
+                    onClick={() => selectAkshara(index)}
                     aria-label={`Select akshara ${index + 1}`}
                   >
                     <b>{index + 1}</b>
@@ -1137,8 +1165,8 @@ export default function Home() {
                     return (
                       <article
                         key={beat.id}
-                        className={`beat-card ${selected === index ? "selected" : ""} ${activeBeat === index && playing ? "active" : ""}`}
-                        onClick={() => { setSelected(index); setFocusedSubBeat(null); }}
+                        className={`beat-card ${inspectorOpen && selected === index ? "selected" : ""} ${activeBeat === index && playing ? "active" : ""}`}
+                        onClick={() => selectAkshara(index)}
                       >
                         <div className="beat-top">
                           <span>{index + 1}</span>
@@ -1162,7 +1190,7 @@ export default function Home() {
                             onChange={(event) => {
                               event.stopPropagation();
                               const value = event.target.value as Kriya | "";
-                              setSelected(index);
+                              selectAkshara(index);
                               setBeats((items) => items.map((item, beatIndex) =>
                                 beatIndex === index ? { ...item, kriyaOverride: value || undefined } : item,
                               ));
@@ -1182,8 +1210,7 @@ export default function Home() {
                           className="edit-subdivisions"
                           onClick={(event) => {
                             event.stopPropagation();
-                            setSelected(index);
-                            setFocusedSubBeat(null);
+                            selectAkshara(index);
                             window.setTimeout(() => document.getElementById("beat-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
                           }}
                         >
@@ -1206,7 +1233,7 @@ export default function Home() {
           <p className="shortcut-hint">Shortcuts: <kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> select akshara · <kbd>Delete</kbd> remove its audio</p>
           </section>
 
-          <aside className="inspector-panel">
+          {inspectorOpen && <aside className="inspector-panel">
           <div className="inspector-heading" id="beat-inspector">
             <div className="inspector-identity">
               <b>{selected + 1}</b>
@@ -1217,11 +1244,7 @@ export default function Home() {
               </div>
             </div>
             <div className="inspector-beat-switcher">
-              {beats.map((beat, index) => (
-                <button key={beat.id} className={selected === index ? "active" : ""} onClick={() => { setSelected(index); setFocusedSubBeat(null); }}>
-                  {index + 1}
-                </button>
-              ))}
+              <button className="close-inspector" onClick={() => setInspectorOpen(false)} aria-label="Deselect akshara and collapse beat controls" title="Close beat controls">×</button>
             </div>
           </div>
 
@@ -1436,7 +1459,7 @@ export default function Home() {
             </label>
           </section>}
           </div>
-          </aside>
+          </aside>}
           </div>
         </div>
       </section>
