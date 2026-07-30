@@ -1208,10 +1208,13 @@ export default function Home() {
 
           <aside className="inspector-panel">
           <div className="inspector-heading" id="beat-inspector">
-            <div>
-              <span>EDITING AKSHARA {selected + 1}</span>
-              <h2>Beat {selected + 1} controls</h2>
-              <p>Set its nadai (subdivisions), accents, click sounds, and audio sample.</p>
+            <div className="inspector-identity">
+              <b>{selected + 1}</b>
+              <div>
+                <span>SELECTED AKSHARA</span>
+                <h2>Beat {selected + 1}</h2>
+                <p>Shape the inner rhythm and sound of this beat.</p>
+              </div>
             </div>
             <div className="inspector-beat-switcher">
               {beats.map((beat, index) => (
@@ -1222,21 +1225,37 @@ export default function Home() {
             </div>
           </div>
 
+          <div className="inspector-summary">
+            <div><span>BEAT LENGTH</span><strong>{beatDuration.toFixed(2)}s</strong></div>
+            <div><span>NADAI</span><strong>{current.subdivision}</strong><small>{namedNadais[current.subdivision]?.name ?? "Custom"}</small></div>
+            <div><span>AUDIO SAMPLE</span><strong>{current.fileName ? "Loaded" : "Empty"}</strong><small>{current.fileName ?? "Add a sound below"}</small></div>
+          </div>
+
           <div className="unified-inspector">
           <section className="subdivision-editor">
             <div className="subdivision-head">
               <div>
-                <span className="section-number">A</span>
-                <div><h3>Nadai / subdivisions</h3><p>Choose how many equal notes play inside this akshara (beat).</p></div>
+                <span className="section-number">1</span>
+                <div><h3>Choose the nadai</h3><p>How many equal notes should play inside this akshara?</p></div>
               </div>
               <span className="sub-duration">{(beatDuration / current.subdivision).toFixed(3)}s per subdivision</span>
             </div>
-            <div className="nadai-row">
-              {subdivisions.map((subdivision) => (
-                <button key={subdivision.count} className={current.subdivision === subdivision.count ? "active" : ""} onClick={() => setSubdivision(subdivision.count)}>
-                  <b>{subdivision.count}</b><span><strong>{subdivision.name}</strong><small>{subdivision.phrase}</small></span>
-                </button>
-              ))}
+            <div className="nadai-select-row">
+              <label htmlFor="nadai-select">
+                <span>Nadai / subdivision count</span>
+                <select id="nadai-select" value={current.subdivision} onChange={(event) => setSubdivision(Number(event.target.value))}>
+                  {subdivisions.map((subdivision) => (
+                    <option key={subdivision.count} value={subdivision.count}>
+                      {subdivision.count} — {subdivision.name}{namedNadais[subdivision.count] ? ` · ${subdivision.phrase}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div>
+                <span>CURRENT PATTERN</span>
+                <strong>{current.subdivision} notes</strong>
+                <small>{namedNadais[current.subdivision]?.phrase ?? `${current.subdivision} equal subdivisions`}</small>
+              </div>
             </div>
             <div className="subbeat-grid">
               {current.subPattern.map((state, index) => (
@@ -1408,8 +1427,8 @@ export default function Home() {
               <div className="empty-editor"><strong>Drop a sound on this akshara</strong><span>Its waveform and timing choices will appear here.</span></div>
             )}
           </section> : <section className="audio-start">
-            <span>♪</span>
-            <h3>Add a sound to beat {selected + 1}</h3>
+            <span className="audio-step">2</span>
+            <h3>Add the beat sound</h3>
             <p>Upload a sample or recording. Trimming, pitch, volume, and timing controls will appear here.</p>
             <label className="inspector-upload">
               <input type="file" accept="audio/*,.opus,.ogg,.oga,.webm" onChange={(event) => uploadAudio(event, selected)} />
